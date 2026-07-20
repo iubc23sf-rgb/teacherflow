@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { logSupabaseError } from "@/lib/supabase/logError";
 
 export const dynamic = "force-dynamic";
 
@@ -8,11 +9,12 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: googleToken } = await supabase
+  const { data: googleToken, error: googleTokenError } = await supabase
     .from("google_oauth_tokens")
     .select("updated_at")
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
+  logSupabaseError("settings.googleToken", googleTokenError);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logSupabaseError } from "@/lib/supabase/logError";
 
 export async function createTask(formData: FormData) {
   const supabase = createClient();
@@ -16,7 +17,7 @@ export async function createTask(formData: FormData) {
   const due_date = String(formData.get("due_date") ?? "") || null;
   const priority = Number(formData.get("priority") ?? 2);
 
-  await supabase.from("tasks").insert({
+  const { error } = await supabase.from("tasks").insert({
     user_id: user.id,
     title,
     due_date,
@@ -24,22 +25,25 @@ export async function createTask(formData: FormData) {
     status: "open",
     source: "manual",
   });
+  logSupabaseError("tasks.createTask", error);
 
   revalidatePath("/tasks");
 }
 
 export async function toggleTask(taskId: string, done: boolean) {
   const supabase = createClient();
-  await supabase
+  const { error } = await supabase
     .from("tasks")
     .update({ status: done ? "done" : "open" })
     .eq("id", taskId);
+  logSupabaseError("tasks.toggleTask", error);
 
   revalidatePath("/tasks");
 }
 
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
-  await supabase.from("tasks").delete().eq("id", taskId);
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  logSupabaseError("tasks.deleteTask", error);
   revalidatePath("/tasks");
 }

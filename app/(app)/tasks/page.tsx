@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { logSupabaseError } from "@/lib/supabase/logError";
 import TaskForm from "@/components/tasks/TaskForm";
 import TaskList from "@/components/tasks/TaskList";
 
@@ -24,11 +25,12 @@ export default async function TasksPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: tasks } = await supabase
+  const { data: tasks, error: tasksError } = await supabase
     .from("tasks")
     .select("*")
     .eq("user_id", user?.id ?? "")
     .order(sortKey, { ascending: true, nullsFirst: false });
+  logSupabaseError("tasks.tasks", tasksError);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { logSupabaseError } from "@/lib/supabase/logError";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +39,13 @@ export default async function DashboardPage() {
   weekEnd.setDate(weekEnd.getDate() + 7);
 
   const [
-    { data: todayEvents },
-    { data: openTasks },
-    { data: weekEvents },
-    { data: googleToken },
-    { data: allTasksThisWeek },
-    { data: pdfTasks },
-    { data: lessonProgress },
+    { data: todayEvents, error: todayEventsError },
+    { data: openTasks, error: openTasksError },
+    { data: weekEvents, error: weekEventsError },
+    { data: googleToken, error: googleTokenError },
+    { data: allTasksThisWeek, error: allTasksThisWeekError },
+    { data: pdfTasks, error: pdfTasksError },
+    { data: lessonProgress, error: lessonProgressError },
   ] = await Promise.all([
     supabase
       .from("calendar_events")
@@ -85,6 +86,14 @@ export default async function DashboardPage() {
       .select("planned_hours, completed_hours")
       .eq("user_id", userId),
   ]);
+
+  logSupabaseError("dashboard.todayEvents", todayEventsError);
+  logSupabaseError("dashboard.openTasks", openTasksError);
+  logSupabaseError("dashboard.weekEvents", weekEventsError);
+  logSupabaseError("dashboard.googleToken", googleTokenError);
+  logSupabaseError("dashboard.allTasksThisWeek", allTasksThisWeekError);
+  logSupabaseError("dashboard.pdfTasks", pdfTasksError);
+  logSupabaseError("dashboard.lessonProgress", lessonProgressError);
 
   const nextEvent = (todayEvents ?? []).find(
     (e: any) => new Date(e.start_time) >= now

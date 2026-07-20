@@ -6,14 +6,16 @@ type DateBadge = { id: string; title: string; colorClass: string };
 
 export default function MonthCalendar({
   weeks,
-  rangeLabel,
+  monthDate,
+  monthLabel,
   prevHref,
   nextHref,
   todayKey,
   eventsByDate,
 }: {
   weeks: Date[][];
-  rangeLabel: string;
+  monthDate: Date;
+  monthLabel: string;
   prevHref: string;
   nextHref: string;
   todayKey: string;
@@ -26,14 +28,14 @@ export default function MonthCalendar({
           href={prevHref}
           className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
         >
-          ← 前の4週間
+          ← 前月
         </Link>
-        <h2 className="text-sm font-semibold text-gray-700">{rangeLabel}</h2>
+        <h2 className="text-sm font-semibold text-gray-700">{monthLabel}</h2>
         <Link
           href={nextHref}
           className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
         >
-          次の4週間 →
+          翌月 →
         </Link>
       </div>
 
@@ -48,6 +50,7 @@ export default function MonthCalendar({
       <div className="mt-1 grid grid-cols-7 gap-2">
         {weeks.map((week) =>
           week.map((d) => {
+            const isCurrentMonth = d.getMonth() === monthDate.getMonth();
             const isToday = d.toDateString() === todayKey;
             const badges = eventsByDate[d.toDateString()] ?? [];
 
@@ -60,12 +63,16 @@ export default function MonthCalendar({
               >
                 <p
                   className={`text-xs ${
-                    isToday ? "font-semibold text-brand-700" : "text-gray-600"
+                    isToday
+                      ? "font-semibold text-brand-700"
+                      : isCurrentMonth
+                        ? "text-gray-600"
+                        : "text-gray-300"
                   }`}
                 >
-                  {d.getMonth() + 1}/{d.getDate()}
+                  {d.getDate()}
                 </p>
-                {badges.length > 0 && (
+                {isCurrentMonth && badges.length > 0 && (
                   <div className="mt-0.5 space-y-0.5">
                     {badges.slice(0, 3).map((b) => (
                       <div

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
 type SlotBadge = { id: string; name: string };
 
@@ -21,7 +21,7 @@ export default function WeekCalendar({
 }) {
   const weekLabel = `${weekDates[0].getFullYear()}年${
     weekDates[0].getMonth() + 1
-  }月${weekDates[0].getDate()}日 〜 ${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`;
+  }月${weekDates[0].getDate()}日 〜 ${weekDates[4].getMonth() + 1}月${weekDates[4].getDate()}日`;
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-6">
@@ -43,7 +43,7 @@ export default function WeekCalendar({
         </Link>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+      <div className="grid grid-cols-5 gap-1.5 text-center text-xs">
         {WEEKDAY_LABELS.map((label, i) => {
           const isToday = weekDates[i].toDateString() === todayKey;
           return (
@@ -68,7 +68,7 @@ export default function WeekCalendar({
         })}
       </div>
 
-      <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+      <div className="mt-1.5 grid grid-cols-5 gap-1.5">
         {weekDates.map((d, dayOfWeek) => {
           const isToday = d.toDateString() === todayKey;
           const personal = personalSlotsByDay[dayOfWeek] ?? [];

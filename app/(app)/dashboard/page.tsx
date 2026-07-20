@@ -14,38 +14,6 @@ const PRIORITY_STYLE: Record<number, string> = {
 };
 const PRIORITY_LABEL: Record<number, string> = { 1: "高", 2: "中", 3: "低" };
 
-function parseMonthParam(param?: string) {
-  if (param && /^\d{4}-\d{2}$/.test(param)) {
-    const [y, m] = param.split("-").map(Number);
-    return new Date(y, m - 1, 1);
-  }
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-}
-
-function formatMonthParam(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function buildMonthGrid(monthDate: Date) {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // 0=月
-  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
-  const gridStart = new Date(year, month, 1 - firstWeekday);
-
-  const days = Array.from({ length: totalCells }, (_, i) => {
-    const d = new Date(gridStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const weeks: Date[][] = [];
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
-  return weeks;
-}
-
 function startOfWeek(date: Date) {
   const d = new Date(date);
   const day = (d.getDay() + 6) % 7; // 0 = 月曜
@@ -66,6 +34,29 @@ function formatDateParam(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate()
   ).padStart(2, "0")}`;
+}
+
+function parsePeriodParam(param?: string) {
+  if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
+    const [y, m, d] = param.split("-").map(Number);
+    return startOfWeek(new Date(y, m - 1, d));
+  }
+  return startOfWeek(new Date());
+}
+
+function formatRangeLabel(d: Date) {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function buildFourWeekGrid(periodStart: Date) {
+  const days = Array.from({ length: 28 }, (_, i) => {
+    const d = new Date(periodStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  const weeks: Date[][] = [];
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  return weeks;
 }
 
 function groupSlotsByDay(slots: any[], timetableId: string) {
@@ -101,7 +92,7 @@ const EVENT_CATEGORY_STYLE: Record<string, string> = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { month?: string; week?: string };
+  searchParams: { period?: string; week?: string };
 }) {
   const supabase = createClient();
   const {
@@ -113,12 +104,14 @@ export default async function DashboardPage({
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
 
-  const monthDate = parseMonthParam(searchParams.month);
-  const monthWeeks = buildMonthGrid(monthDate);
-  const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
-  const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-  const monthGridStart = monthWeeks[0][0];
-  const monthGridEnd = monthWeeks[monthWeeks.length - 1][6];
+  const periodStart = parsePeriodParam(searchParams.period);
+  const periodWeeks = buildFourWeekGrid(periodStart);
+  const prevPeriodStart = new Date(periodStart);
+  prevPeriodStart.setDate(prevPeriodStart.getDate() - 28);
+  const nextPeriodStart = new Date(periodStart);
+  nextPeriodStart.setDate(nextPeriodStart.getDate() + 28);
+  const monthGridStart = periodWeeks[0][0];
+  const monthGridEnd = periodWeeks[periodWeeks.length - 1][6];
 
   const weekStart = parseWeekParam(searchParams.week);
   const weekDates = Array.from({ length: 7 }, (_, i) => {
@@ -259,7 +252,7 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       {/* Row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-2">
           <WeekCalendar
             weekDates={weekDates}
@@ -271,19 +264,7 @@ export default async function DashboardPage({
           />
         </div>
 
-        <div className="lg:col-span-2">
-          <MonthCalendar
-            weeks={monthWeeks}
-            monthDate={monthDate}
-            monthLabel={`${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
-            prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-            nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-            todayKey={now.toDateString()}
-            eventsByDate={eventsByDate}
-          />
-        </div>
-
-        <section className="rounded-xl border border-gray-200 bg-white p-6 lg:col-span-1">
+        <section className="rounded-xl border border-gray-200 bg-white p-6 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">タスクリスト</h2>
             <Link
@@ -335,6 +316,17 @@ export default async function DashboardPage({
           </Link>
         </section>
       </div>
+
+      <MonthCalendar
+        weeks={periodWeeks}
+        rangeLabel={`${formatRangeLabel(periodWeeks[0][0])} 〜 ${formatRangeLabel(
+          periodWeeks[periodWeeks.length - 1][6]
+        )}（4週間）`}
+        prevHref={`/dashboard?period=${formatDateParam(prevPeriodStart)}`}
+        nextHref={`/dashboard?period=${formatDateParam(nextPeriodStart)}`}
+        todayKey={now.toDateString()}
+        eventsByDate={eventsByDate}
+      />
 
       {/* Row 2 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

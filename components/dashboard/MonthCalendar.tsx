@@ -6,16 +6,14 @@ type DateBadge = { id: string; title: string; colorClass: string };
 
 export default function MonthCalendar({
   weeks,
-  monthDate,
-  monthLabel,
+  rangeLabel,
   prevHref,
   nextHref,
   todayKey,
   eventsByDate,
 }: {
   weeks: Date[][];
-  monthDate: Date;
-  monthLabel: string;
+  rangeLabel: string;
   prevHref: string;
   nextHref: string;
   todayKey: string;
@@ -28,18 +26,18 @@ export default function MonthCalendar({
           href={prevHref}
           className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
         >
-          ← 前月
+          ← 前の4週間
         </Link>
-        <h2 className="text-sm font-semibold text-gray-700">{monthLabel}</h2>
+        <h2 className="text-sm font-semibold text-gray-700">{rangeLabel}</h2>
         <Link
           href={nextHref}
           className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
         >
-          翌月 →
+          次の4週間 →
         </Link>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400">
+      <div className="grid grid-cols-7 gap-2 text-center text-xs text-gray-400">
         {WEEKDAY_LABELS.map((label) => (
           <div key={label} className="py-1">
             {label}
@@ -47,46 +45,39 @@ export default function MonthCalendar({
         ))}
       </div>
 
-      <div className="mt-1 grid grid-cols-7 gap-1">
+      <div className="mt-1 grid grid-cols-7 gap-2">
         {weeks.map((week) =>
           week.map((d) => {
-            const isCurrentMonth = d.getMonth() === monthDate.getMonth();
             const isToday = d.toDateString() === todayKey;
             const badges = eventsByDate[d.toDateString()] ?? [];
 
             return (
               <div
                 key={d.toISOString()}
-                className={`min-h-[92px] rounded-md border p-1 ${
-                  isToday
-                    ? "border-brand-300 bg-brand-50"
-                    : "border-gray-100"
+                className={`min-h-[100px] rounded-md border p-1.5 ${
+                  isToday ? "border-brand-300 bg-brand-50" : "border-gray-100"
                 }`}
               >
                 <p
-                  className={`text-[11px] ${
-                    isToday
-                      ? "font-semibold text-brand-700"
-                      : isCurrentMonth
-                        ? "text-gray-600"
-                        : "text-gray-300"
+                  className={`text-xs ${
+                    isToday ? "font-semibold text-brand-700" : "text-gray-600"
                   }`}
                 >
-                  {d.getDate()}
+                  {d.getMonth() + 1}/{d.getDate()}
                 </p>
-                {isCurrentMonth && badges.length > 0 && (
+                {badges.length > 0 && (
                   <div className="mt-0.5 space-y-0.5">
                     {badges.slice(0, 3).map((b) => (
                       <div
                         key={b.id}
-                        className={`truncate rounded px-1 py-0.5 text-[9px] ${b.colorClass}`}
+                        className={`truncate rounded px-1 py-0.5 text-[10px] ${b.colorClass}`}
                         title={b.title}
                       >
                         {b.title}
                       </div>
                     ))}
                     {badges.length > 3 && (
-                      <p className="text-[9px] text-gray-400">
+                      <p className="text-[10px] text-gray-400">
                         他{badges.length - 3}件
                       </p>
                     )}

@@ -179,7 +179,7 @@ export default async function DashboardPage() {
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">今日のToDo</h2>
+            <h2 className="text-sm font-semibold text-gray-700">タスクリスト</h2>
             <Link
               href="/tasks"
               className="text-xs font-medium text-brand-600 hover:underline"
@@ -194,7 +194,18 @@ export default async function DashboardPage() {
                   key={task.id}
                   className="flex items-center justify-between gap-2 text-sm"
                 >
-                  <span className="truncate">{task.title}</span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate">{task.title}</span>
+                    {task.due_date && (
+                      <span className="shrink-0 whitespace-nowrap text-xs text-gray-400">
+                        {new Date(task.due_date).toLocaleDateString("ja-JP", {
+                          month: "numeric",
+                          day: "numeric",
+                        })}
+                        まで
+                      </span>
+                    )}
+                  </span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
                       PRIORITY_STYLE[task.priority] ?? PRIORITY_STYLE[2]

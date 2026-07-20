@@ -410,7 +410,6 @@ export default async function DashboardPage({
               color="bg-blue-500"
               note={totalPlannedHours === 0 ? "データなし" : undefined}
             />
-            <ProgressBar label="採点・成績の進捗" value={0} color="bg-orange-500" note />
             <ProgressBar label="面談記録の進捗" value={0} color="bg-purple-500" note />
           </div>
         </section>

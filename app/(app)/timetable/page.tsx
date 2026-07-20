@@ -1,40 +1,32 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/logError";
+import { getOrCreateTimetableId, type TimetableKind } from "@/lib/supabase/timetables";
 import TimetableGrid from "@/components/timetable/TimetableGrid";
 import SubjectClassManager from "@/components/timetable/SubjectClassManager";
 
 export const dynamic = "force-dynamic";
 
-async function getOrCreateTimetableId(
-  supabase: ReturnType<typeof createClient>,
-  userId: string
-) {
-  const { data: existing, error: selectError } = await supabase
-    .from("timetables")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-  logSupabaseError("timetable.selectTimetable", selectError);
-  if (existing) return existing.id as string;
+const KIND_TABS: { key: TimetableKind; label: string }[] = [
+  { key: "personal", label: "自分の時間割" },
+  { key: "homeroom", label: "担任クラスの時間割" },
+];
 
-  const { data: created, error: insertError } = await supabase
-    .from("timetables")
-    .insert({ user_id: userId, name: "通常時間割" })
-    .select("id")
-    .single();
-  logSupabaseError("timetable.createTimetable", insertError);
-  return created?.id as string;
-}
+export default async function TimetablePage({
+  searchParams,
+}: {
+  searchParams: { kind?: string };
+}) {
+  const kind: TimetableKind =
+    searchParams.kind === "homeroom" ? "homeroom" : "personal";
 
-export default async function TimetablePage() {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const userId = user?.id ?? "";
 
-  const timetableId = await getOrCreateTimetableId(supabase, userId);
+  const timetableId = await getOrCreateTimetableId(supabase, userId, kind);
 
   const [
     { data: slots, error: slotsError },
@@ -62,7 +54,24 @@ export default async function TimetablePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <h1 className="text-2xl font-bold">時間割</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">時間割</h1>
+        <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-sm">
+          {KIND_TABS.map((tab) => (
+            <Link
+              key={tab.key}
+              href={`/timetable?kind=${tab.key}`}
+              className={`rounded-md px-3 py-1.5 ${
+                kind === tab.key
+                  ? "bg-white font-medium shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <SubjectClassManager subjects={subjects ?? []} classes={classes ?? []} />
 

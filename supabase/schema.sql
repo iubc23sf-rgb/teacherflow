@@ -66,8 +66,10 @@ create table if not exists public.timetables (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   name text not null default '通常時間割',
+  kind text not null default 'personal' check (kind in ('personal', 'homeroom')),
   academic_year text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (user_id, kind)
 );
 
 create table if not exists public.timetable_slots (

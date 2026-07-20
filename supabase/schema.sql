@@ -119,6 +119,18 @@ create table if not exists public.pdf_imports (
   created_at timestamptz default now()
 );
 
+create table if not exists public.interview_records (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  student_name text not null,
+  class_id uuid references public.classes(id) on delete set null,
+  interview_date date not null,
+  interview_type text default 'other', -- sanja(三者面談) / hogosha(保護者面談) / other
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- profiles を auth.users 作成時に自動生成するトリガー
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -148,6 +160,7 @@ alter table public.lesson_progress enable row level security;
 alter table public.ai_chat_sessions enable row level security;
 alter table public.ai_chat_messages enable row level security;
 alter table public.pdf_imports enable row level security;
+alter table public.interview_records enable row level security;
 
 -- 本人のデータのみ CRUD 可能にする標準ポリシー
 create policy "Individual access" on public.profiles for all using (auth.uid() = id) with check (auth.uid() = id);
@@ -160,6 +173,7 @@ create policy "Individual access" on public.timetables for all using (auth.uid()
 create policy "Individual access" on public.lesson_progress for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.ai_chat_sessions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.pdf_imports for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Individual access" on public.interview_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Individual access via timetable" on public.timetable_slots for all using (
   exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
@@ -191,5 +205,6 @@ grant select, insert, update, delete on
   public.lesson_progress,
   public.ai_chat_sessions,
   public.ai_chat_messages,
-  public.pdf_imports
+  public.pdf_imports,
+  public.interview_records
 to authenticated;

@@ -46,6 +46,7 @@ export default async function DashboardPage() {
     { data: allTasksThisWeek, error: allTasksThisWeekError },
     { data: pdfTasks, error: pdfTasksError },
     { data: lessonProgress, error: lessonProgressError },
+    { data: upcomingInterviews, error: upcomingInterviewsError },
   ] = await Promise.all([
     supabase
       .from("calendar_events")
@@ -85,6 +86,13 @@ export default async function DashboardPage() {
       .from("lesson_progress")
       .select("planned_hours, completed_hours")
       .eq("user_id", userId),
+    supabase
+      .from("interview_records")
+      .select("*, classes(name)")
+      .eq("user_id", userId)
+      .gte("interview_date", todayStart.toISOString().slice(0, 10))
+      .order("interview_date", { ascending: true })
+      .limit(5),
   ]);
 
   logSupabaseError("dashboard.todayEvents", todayEventsError);
@@ -94,6 +102,7 @@ export default async function DashboardPage() {
   logSupabaseError("dashboard.allTasksThisWeek", allTasksThisWeekError);
   logSupabaseError("dashboard.pdfTasks", pdfTasksError);
   logSupabaseError("dashboard.lessonProgress", lessonProgressError);
+  logSupabaseError("dashboard.upcomingInterviews", upcomingInterviewsError);
 
   const nextEvent = (todayEvents ?? []).find(
     (e: any) => new Date(e.start_time) >= now
@@ -363,15 +372,43 @@ export default async function DashboardPage() {
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-1 text-sm font-semibold text-gray-700">
-            面談・連絡予定
-          </h2>
-          <p className="mb-4 text-[11px] text-gray-400">
-            ※ 面談記録機能は準備中です
-          </p>
-          <p className="text-sm text-gray-400">
-            面談・連絡予定はまだありません。
-          </p>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">
+              面談・連絡予定
+            </h2>
+            <Link
+              href="/interviews"
+              className="text-xs font-medium text-brand-600 hover:underline"
+            >
+              + 追加
+            </Link>
+          </div>
+          {upcomingInterviews && upcomingInterviews.length > 0 ? (
+            <ul className="space-y-3 text-sm text-gray-600">
+              {upcomingInterviews.map((interview: any) => (
+                <li key={interview.id} className="flex items-center justify-between">
+                  <span>
+                    {new Date(interview.interview_date).toLocaleDateString(
+                      "ja-JP",
+                      { month: "numeric", day: "numeric" }
+                    )}
+                    　{interview.student_name}さん
+                    {interview.classes?.name && `（${interview.classes.name}）`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">
+              面談・連絡予定はまだありません。
+            </p>
+          )}
+          <Link
+            href="/interviews"
+            className="mt-4 inline-block text-xs font-medium text-brand-600 hover:underline"
+          >
+            面談記録を見る →
+          </Link>
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">

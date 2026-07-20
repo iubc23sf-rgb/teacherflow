@@ -85,6 +85,22 @@ create table if not exists public.timetable_slots (
   unique (timetable_id, day_of_week, period)
 );
 
+-- 特定の日だけ通常の時間割（曜日テンプレート）を上書きする（特別時間割・行事による変更など）。
+-- 行が無ければ通常のtimetable_slotsどおり。subject_id/custom_labelが両方nullの行は「その日は空コマ」を意味する。
+create table if not exists public.timetable_overrides (
+  id uuid primary key default gen_random_uuid(),
+  timetable_id uuid not null references public.timetables(id) on delete cascade,
+  override_date date not null,
+  period smallint not null,
+  subject_id uuid references public.subjects(id) on delete set null,
+  custom_label text,
+  class_id uuid references public.classes(id) on delete set null,
+  room text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique (timetable_id, override_date, period)
+);
+
 create table if not exists public.lesson_progress (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -181,6 +197,7 @@ alter table public.calendar_events enable row level security;
 alter table public.google_oauth_tokens enable row level security;
 alter table public.timetables enable row level security;
 alter table public.timetable_slots enable row level security;
+alter table public.timetable_overrides enable row level security;
 alter table public.lesson_progress enable row level security;
 alter table public.ai_chat_sessions enable row level security;
 alter table public.ai_chat_messages enable row level security;
@@ -210,6 +227,12 @@ create policy "Individual access via timetable" on public.timetable_slots for al
   exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
 );
 
+create policy "Individual access via timetable" on public.timetable_overrides for all using (
+  exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
+) with check (
+  exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
+);
+
 create policy "Individual access via session" on public.ai_chat_messages for all using (
   exists (select 1 from public.ai_chat_sessions s where s.id = session_id and s.user_id = auth.uid())
 ) with check (
@@ -231,6 +254,7 @@ grant select, insert, update, delete on
   public.google_oauth_tokens,
   public.timetables,
   public.timetable_slots,
+  public.timetable_overrides,
   public.lesson_progress,
   public.ai_chat_sessions,
   public.ai_chat_messages,

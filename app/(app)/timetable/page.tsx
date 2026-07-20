@@ -5,6 +5,7 @@ import { getOrCreateTimetableId, type TimetableKind } from "@/lib/supabase/timet
 import TimetableGrid from "@/components/timetable/TimetableGrid";
 import SubjectClassManager from "@/components/timetable/SubjectClassManager";
 import AutoGenerateButton from "@/components/timetable/AutoGenerateButton";
+import SpecialDayEditor from "@/components/timetable/SpecialDayEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,21 @@ const KIND_TABS: { key: TimetableKind; label: string }[] = [
   { key: "homeroom", label: "担任クラスの時間割" },
 ];
 
+function dayOfWeekFromDate(dateStr: string) {
+  // JS getDay(): 0=日 ... 6=土 → 0=月 ... 4=金 に変換（土日は -1 のまま、該当なし扱い）
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const jsDay = new Date(y, m - 1, d).getDay();
+  return (jsDay + 6) % 7;
+}
+
 export default async function TimetablePage({
   searchParams,
 }: {
-  searchParams: { kind?: string };
+  searchParams: { kind?: string; date?: string };
 }) {
   const kind: TimetableKind =
     searchParams.kind === "homeroom" ? "homeroom" : "personal";
+  const specialDate = searchParams.date ?? null;
 
   const supabase = createClient();
   const {
@@ -33,6 +42,7 @@ export default async function TimetablePage({
     { data: slots, error: slotsError },
     { data: subjects, error: subjectsError },
     { data: classes, error: classesError },
+    { data: overrides, error: overridesError },
   ] = await Promise.all([
     supabase
       .from("timetable_slots")
@@ -48,10 +58,18 @@ export default async function TimetablePage({
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: true }),
+    specialDate
+      ? supabase
+          .from("timetable_overrides")
+          .select("*")
+          .eq("timetable_id", timetableId)
+          .eq("override_date", specialDate)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   logSupabaseError("timetable.slots", slotsError);
   logSupabaseError("timetable.subjects", subjectsError);
   logSupabaseError("timetable.classes", classesError);
+  logSupabaseError("timetable.overrides", overridesError);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -77,6 +95,19 @@ export default async function TimetablePage({
       <SubjectClassManager subjects={subjects ?? []} classes={classes ?? []} />
 
       <AutoGenerateButton timetableId={timetableId} />
+
+      {specialDate && (
+        <SpecialDayEditor
+          timetableId={timetableId}
+          date={specialDate}
+          dayOfWeek={dayOfWeekFromDate(specialDate)}
+          allSlots={(slots ?? []) as any}
+          overridesForDate={(overrides ?? []) as any}
+          subjects={subjects ?? []}
+          classes={classes ?? []}
+          backHref={`/timetable?kind=${kind}`}
+        />
+      )}
 
       <TimetableGrid
         timetableId={timetableId}

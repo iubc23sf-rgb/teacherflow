@@ -228,3 +228,79 @@ export async function autoGenerateTimetable(timetableId: string) {
   revalidatePath("/timetable");
   return { placed: toInsert.length, unplaced };
 }
+
+export async function saveOverride({
+  timetableId,
+  overrideDate,
+  period,
+  subjectId,
+  customLabel,
+  classId,
+  room,
+}: {
+  timetableId: string;
+  overrideDate: string;
+  period: number;
+  subjectId: string | null;
+  customLabel: string | null;
+  classId: string | null;
+  room: string | null;
+}) {
+  const supabase = createClient();
+
+  const { data: existing, error: selectError } = await supabase
+    .from("timetable_overrides")
+    .select("id")
+    .eq("timetable_id", timetableId)
+    .eq("override_date", overrideDate)
+    .eq("period", period)
+    .maybeSingle();
+  logSupabaseError("timetable.saveOverride.select", selectError);
+
+  const payload = {
+    subject_id: subjectId,
+    custom_label: customLabel,
+    class_id: classId,
+    room,
+  };
+
+  if (existing) {
+    const { error } = await supabase
+      .from("timetable_overrides")
+      .update(payload)
+      .eq("id", existing.id);
+    logSupabaseError("timetable.saveOverride.update", error);
+  } else {
+    const { error } = await supabase.from("timetable_overrides").insert({
+      timetable_id: timetableId,
+      override_date: overrideDate,
+      period,
+      ...payload,
+    });
+    logSupabaseError("timetable.saveOverride.insert", error);
+  }
+
+  revalidatePath("/timetable");
+  revalidatePath("/dashboard");
+}
+
+export async function clearOverride({
+  timetableId,
+  overrideDate,
+  period,
+}: {
+  timetableId: string;
+  overrideDate: string;
+  period: number;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("timetable_overrides")
+    .delete()
+    .eq("timetable_id", timetableId)
+    .eq("override_date", overrideDate)
+    .eq("period", period);
+  logSupabaseError("timetable.clearOverride", error);
+  revalidatePath("/timetable");
+  revalidatePath("/dashboard");
+}

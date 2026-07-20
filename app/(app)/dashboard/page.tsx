@@ -68,15 +68,50 @@ function buildMonthGrid(monthDate: Date) {
   return weeks;
 }
 
-function groupSlotsByDay(slots: any[], timetableId: string) {
+function groupSlotsByDay(
+  slots: any[],
+  timetableId: string,
+  overrides: any[],
+  weekDates: Date[]
+) {
   const byDay: Record<number, { id: string; name: string }[]> = {};
-  slots
-    .filter((s) => s.timetable_id === timetableId)
-    .sort((a, b) => a.period - b.period)
-    .forEach((s) => {
-      byDay[s.day_of_week] = byDay[s.day_of_week] ?? [];
-      byDay[s.day_of_week].push({ id: s.id, name: s.subjects?.name ?? "-" });
-    });
+
+  weekDates.forEach((date, dayOfWeek) => {
+    const dateKey = formatDateParam(date);
+    const overridesForDate = overrides.filter(
+      (o) => o.timetable_id === timetableId && o.override_date === dateKey
+    );
+    const overrideByPeriod = new Map<number, any>();
+    overridesForDate.forEach((o) => overrideByPeriod.set(o.period, o));
+
+    const recurring = slots
+      .filter((s) => s.timetable_id === timetableId && s.day_of_week === dayOfWeek)
+      .sort((a, b) => a.period - b.period);
+
+    const periods = new Set<number>([
+      ...recurring.map((s) => s.period),
+      ...overridesForDate.map((o) => o.period),
+    ]);
+
+    const entries: { id: string; period: number; name: string }[] = [];
+    Array.from(periods)
+      .sort((a, b) => a - b)
+      .forEach((period) => {
+        const override = overrideByPeriod.get(period);
+        if (override) {
+          const label = override.custom_label ?? override.subjects?.name ?? null;
+          if (label) entries.push({ id: `o-${override.id}`, period, name: label });
+          return; // override present with no subject/label → explicitly emptied
+        }
+        const slot = recurring.find((s) => s.period === period);
+        if (slot?.subjects?.name) {
+          entries.push({ id: slot.id, period, name: slot.subjects.name });
+        }
+      });
+
+    byDay[dayOfWeek] = entries.map(({ id, name }) => ({ id, name }));
+  });
+
   return byDay;
 }
 
@@ -143,6 +178,7 @@ export default async function DashboardPage({
     { data: lessonProgress, error: lessonProgressError },
     { data: upcomingInterviews, error: upcomingInterviewsError },
     { data: allSlots, error: allSlotsError },
+    { data: weekOverrides, error: weekOverridesError },
     { data: monthTasks, error: monthTasksError },
     { data: monthInterviews, error: monthInterviewsError },
     { data: monthEvents, error: monthEventsError },
@@ -179,6 +215,12 @@ export default async function DashboardPage({
       .select("*, subjects(name, color), classes(name)")
       .in("timetable_id", [personalTimetableId, homeroomTimetableId]),
     supabase
+      .from("timetable_overrides")
+      .select("*, subjects(name)")
+      .in("timetable_id", [personalTimetableId, homeroomTimetableId])
+      .gte("override_date", formatDateParam(weekDates[0]))
+      .lte("override_date", formatDateParam(weekDates[4])),
+    supabase
       .from("tasks")
       .select("id, title, due_date")
       .eq("user_id", userId)
@@ -211,13 +253,24 @@ export default async function DashboardPage({
   logSupabaseError("dashboard.lessonProgress", lessonProgressError);
   logSupabaseError("dashboard.upcomingInterviews", upcomingInterviewsError);
   logSupabaseError("dashboard.allSlots", allSlotsError);
+  logSupabaseError("dashboard.weekOverrides", weekOverridesError);
   logSupabaseError("dashboard.monthTasks", monthTasksError);
   logSupabaseError("dashboard.monthInterviews", monthInterviewsError);
   logSupabaseError("dashboard.monthEvents", monthEventsError);
   logSupabaseError("dashboard.recentDocuments", recentDocumentsError);
 
-  const personalSlotsByDay = groupSlotsByDay(allSlots ?? [], personalTimetableId);
-  const homeroomSlotsByDay = groupSlotsByDay(allSlots ?? [], homeroomTimetableId);
+  const personalSlotsByDay = groupSlotsByDay(
+    allSlots ?? [],
+    personalTimetableId,
+    weekOverrides ?? [],
+    weekDates
+  );
+  const homeroomSlotsByDay = groupSlotsByDay(
+    allSlots ?? [],
+    homeroomTimetableId,
+    weekOverrides ?? [],
+    weekDates
+  );
 
   const eventsByDate: Record<string, DateBadge[]> = {};
   (monthTasks ?? []).forEach((t: any) => {

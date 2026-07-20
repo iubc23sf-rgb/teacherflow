@@ -4,6 +4,13 @@ const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
 type SlotBadge = { id: string; name: string };
 
+function formatDateParam(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function WeekCalendar({
   weekDates,
   personalSlotsByDay,
@@ -75,9 +82,10 @@ export default function WeekCalendar({
           const homeroom = homeroomSlotsByDay[dayOfWeek] ?? [];
 
           return (
-            <div
+            <Link
               key={d.toISOString()}
-              className={`min-h-[110px] rounded-md border p-1.5 ${
+              href={`/timetable?date=${formatDateParam(d)}`}
+              className={`block min-h-[110px] rounded-md border p-1.5 transition hover:border-brand-300 hover:bg-brand-50/40 ${
                 isToday
                   ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
                   : "border-gray-100"
@@ -103,7 +111,7 @@ export default function WeekCalendar({
                   </div>
                 ))}
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

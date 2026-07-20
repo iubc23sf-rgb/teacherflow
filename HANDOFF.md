@@ -28,67 +28,54 @@ Google カレンダー同期・タスク管理・時間割・AI を1つにまと
 - `.env.local` に Supabase の URL / anon key 設定済み
 - `npm install` 実施済み、`npm run dev` でローカル起動確認済み（http://localhost:3000）
 - ログイン画面にメールのマジックリンクログインを追加済み（Google OAuth設定不要でお試し可能）
-- git リポジトリ化済み
-- ダッシュボードのモック表示を実データ/空状態表示に置き換え済み（授業準備の進捗は`lesson_progress`から計算、PDF由来タスクは`tasks(source='pdf')`を表示、面談予定・資料一覧は未実装機能として空状態表示）
+- git リポジトリ化済み。GitHub: https://github.com/iubc23sf-rgb/teacherflow
+- Vercelにデプロイ済み。本番URL: https://teacherflow-ebon.vercel.app （`main`へのpushで自動デプロイ）
+- ダッシュボードのモック表示を実データ/空状態表示に置き換え済み（授業準備の進捗は`lesson_progress`から計算、PDF由来タスクは`tasks(source='pdf')`を表示、面談・連絡予定は`interview_records`から表示、資料一覧は未実装機能として空状態表示）
 - 時間割の編集UIを実装済み（`app/(app)/timetable/`）。科目・クラスの追加/削除、セルクリックでの科目・クラス・教室の割り当て/クリアが可能。ユーザーの`timetables`レコードが無い場合は初回アクセス時に自動作成
+- 面談記録機能を実装済み（`app/(app)/interviews/`）。PRDに詳細仕様がなかったため一から設計（生徒名・クラス・面談日・種別・メモ）。ダッシュボードの「面談・連絡予定」とも連動
+- 全テーブルへの `authenticated` ロールGRANT不足を修正済み（下記インシデント参照）、Supabaseエラーの握りつぶしにログ出力を追加済み
 
 ## 未実装（Phase2以降、PRD参照）
 
 - 時間割の自動生成（編集UIは実装済み）
 - Googleカレンダーとの実際の同期処理
 - AIチャット、PDF→ToDo、授業進度管理の編集UI（ダッシュボードにはモック表示のみあり）
-- 面談記録、座席表などの学級経営機能
+- 座席表などの学級経営機能（面談記録は実装済み）
 - クラス管理（一覧・詳細画面）、テスト・成績管理、資料・ファイル管理
 
 ## 次にやると良さそうなこと
 
-1. Phase2機能の続き（Googleカレンダー同期 or 面談記録機能）を優先順位をつけて実装
-2. テストユーザー向けにVercelなどへデプロイ
+1. Phase2の残り機能（Googleカレンダー同期、クラス管理、テスト・成績管理）を優先順位をつけて実装
+2. テストユーザーへの案内・フィードバック収集（デプロイ済みのため https://teacherflow-ebon.vercel.app を共有可能）
 
 ## 注意事項
 
 - `.env.local` にはSupabaseの接続情報が入っているため、gitにコミットしないよう `.gitignore` を確認すること
 - Supabaseの `service_role` キーは絶対にフロントエンドコードに含めないこと
 
-### 【重要・要対応】全テーブルで GRANT 不足により読み書きができていなかった
+### 【解決済み】全テーブルで GRANT 不足により読み書きができていなかった
 
-2026-07-20 の動作検証で判明。`schema.sql` はテーブル作成とRLSポリシーのみで、
-`authenticated` ロールへの GRANT が一切なかったため、ログイン後の全ての
-テーブル操作が `permission denied for table ...` (42501) で失敗していた。
-アプリ側のコードがSupabaseのレスポンスの `error` を確認せず `data` を
-`?? []` 等で握りつぶしていたため、画面上は「データがありません」という
-正常な空状態に見えてしまい、これまで気づかれていなかった。
+2026-07-20 の動作検証で判明・対応済みのインシデント。`schema.sql` はテーブル
+作成とRLSポリシーのみで、`authenticated` ロールへの GRANT が一切なかったため、
+ログイン後の全てのテーブル操作が `permission denied for table ...` (42501) で
+失敗していた。アプリ側のコードがSupabaseのレスポンスの `error` を確認せず
+`data` を `?? []` 等で握りつぶしていたため、画面上は「データがありません」
+という正常な空状態に見えてしまい、これまで気づかれていなかった。
 
-**対応済み:** `schema.sql` に GRANT 文を追加。ただし本番のSupabaseプロジェクトには
-自動反映されないため、SQL Editorで以下を一度実行する必要がある（未実行の場合、
-ダッシュボード・タスク管理・時間割など全機能が実データで動作しない）:
+対応: `schema.sql` に GRANT 文を追加し、本番Supabaseプロジェクトにも適用済み。
+`lib/supabase/logError.ts` を追加し、dashboard/tasks/timetable/interviewsの
+全ページ・server actionsで `{ error }` をログ出力するよう修正済み。**今後
+新しいテーブルを追加したときは、GRANT文の対象リストに追加するのを忘れない
+こと**（`supabase/schema.sql` 末尾の grant 文を参照）。
 
-```sql
-grant usage on schema public to authenticated;
-grant select, insert, update, delete on
-  public.profiles,
-  public.subjects,
-  public.classes,
-  public.tasks,
-  public.calendar_events,
-  public.google_oauth_tokens,
-  public.timetables,
-  public.timetable_slots,
-  public.lesson_progress,
-  public.ai_chat_sessions,
-  public.ai_chat_messages,
-  public.pdf_imports
-to authenticated;
-```
+### 【対応済み】Supabaseへのスキーマ変更は本番プロジェクトへの手動適用が必要
 
-**要検討:** アプリ側でも `{ error }` を確認せず失敗を握りつぶしている箇所が
-多数ある（dashboard/tasks/timetableの各ページ・actions）。今回のような権限
-エラーが将来また起きても画面上は「空」にしか見えないため、最低限コンソール
-ログに出す等のエラーハンドリング追加を検討したい。
+`schema.sql` は `create table if not exists` を使っているため、既存プロジェクト
+に対して全体を再実行しても新しいテーブル定義しか反映されない（`create policy`
+はIF NOT EXISTSが無いため全体再実行はエラーになる）。テーブルを追加・変更した
+際は、差分のSQLをSupabase SQL Editorで手動実行すること。これまでに適用が
+必要だった差分:
+- `timetable_slots` へのユニーク制約追加（`unique (timetable_id, day_of_week, period)`）
+- `interview_records` テーブルの新規追加とGRANT
 
-- `supabase/schema.sql` の `timetable_slots` に `unique (timetable_id, day_of_week, period)` を追加した。既存のSupabaseプロジェクトは `create table if not exists` のため自動反映されないので、SQL Editorで以下を一度実行すること:
-  ```sql
-  alter table public.timetable_slots
-    add constraint timetable_slots_timetable_id_day_of_week_period_key
-    unique (timetable_id, day_of_week, period);
-  ```
+いずれも本番プロジェクトには適用済み。

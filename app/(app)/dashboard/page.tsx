@@ -43,6 +43,8 @@ export default async function DashboardPage() {
     { data: weekEvents },
     { data: googleToken },
     { data: allTasksThisWeek },
+    { data: pdfTasks },
+    { data: lessonProgress },
   ] = await Promise.all([
     supabase
       .from("calendar_events")
@@ -71,6 +73,17 @@ export default async function DashboardPage() {
       .eq("user_id", userId)
       .maybeSingle(),
     supabase.from("tasks").select("status").eq("user_id", userId),
+    supabase
+      .from("tasks")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source", "pdf")
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("lesson_progress")
+      .select("planned_hours, completed_hours")
+      .eq("user_id", userId),
   ]);
 
   const nextEvent = (todayEvents ?? []).find(
@@ -82,6 +95,19 @@ export default async function DashboardPage() {
     allTasksThisWeek?.filter((t: any) => t.status === "done").length ?? 0;
   const taskProgress =
     totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  const totalPlannedHours = (lessonProgress ?? []).reduce(
+    (sum: number, p: any) => sum + Number(p.planned_hours ?? 0),
+    0
+  );
+  const totalCompletedHours = (lessonProgress ?? []).reduce(
+    (sum: number, p: any) => sum + Number(p.completed_hours ?? 0),
+    0
+  );
+  const lessonPrepProgress =
+    totalPlannedHours > 0
+      ? Math.round((totalCompletedHours / totalPlannedHours) * 100)
+      : 0;
 
   const eventsByDay: Record<string, any[]> = {};
   (weekEvents ?? []).forEach((e: any) => {
@@ -241,23 +267,41 @@ export default async function DashboardPage() {
             <h2 className="text-sm font-semibold text-gray-700">
               会議資料から追加されたタスク
             </h2>
-            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-600">
-              NEW
-            </span>
           </div>
           <p className="mb-4 text-[11px] text-gray-400">
-            ※ PDF→ToDo機能はPhase3で実装予定。以下はイメージ表示です
+            ※ PDF→ToDoの自動抽出機能は準備中です。ここには source が
+            &quot;pdf&quot; のタスクが表示されます
           </p>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-center gap-2">
-              <input type="checkbox" disabled className="h-3.5 w-3.5" />
-              学年通信の提出（7/25）
-            </li>
-            <li className="flex items-center gap-2">
-              <input type="checkbox" disabled className="h-3.5 w-3.5" />
-              体育祭係会議の資料確認（7/22）
-            </li>
-          </ul>
+          {pdfTasks && pdfTasks.length > 0 ? (
+            <ul className="space-y-2 text-sm text-gray-600">
+              {pdfTasks.map((task: any) => (
+                <li key={task.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    disabled
+                    checked={task.status === "done"}
+                    className="h-3.5 w-3.5"
+                    readOnly
+                  />
+                  {task.title}
+                  {task.due_date && (
+                    <span className="text-xs text-gray-400">
+                      （
+                      {new Date(task.due_date).toLocaleDateString("ja-JP", {
+                        month: "numeric",
+                        day: "numeric",
+                      })}
+                      ）
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">
+              まだありません。自動抽出機能の実装後、ここに表示されます。
+            </p>
+          )}
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
@@ -266,7 +310,12 @@ export default async function DashboardPage() {
           </h2>
           <div className="space-y-4">
             <ProgressBar label="タスクの進捗" value={taskProgress} color="bg-green-500" />
-            <ProgressBar label="授業準備の進捗" value={0} color="bg-blue-500" note />
+            <ProgressBar
+              label="授業準備の進捗"
+              value={lessonPrepProgress}
+              color="bg-blue-500"
+              note={totalPlannedHours === 0 ? "データなし" : undefined}
+            />
             <ProgressBar label="採点・成績の進捗" value={0} color="bg-orange-500" note />
             <ProgressBar label="面談記録の進捗" value={0} color="bg-purple-500" note />
           </div>
@@ -309,16 +358,11 @@ export default async function DashboardPage() {
             面談・連絡予定
           </h2>
           <p className="mb-4 text-[11px] text-gray-400">
-            ※ 面談記録機能はPhase2で実装予定。以下はイメージ表示です
+            ※ 面談記録機能は準備中です
           </p>
-          <ul className="space-y-3 text-sm text-gray-600">
-            <li className="flex items-center justify-between">
-              <span>13:30　田中さん（三者面談）</span>
-            </li>
-            <li className="flex items-center justify-between">
-              <span>15:00　山本さん（保護者面談）</span>
-            </li>
-          </ul>
+          <p className="text-sm text-gray-400">
+            面談・連絡予定はまだありません。
+          </p>
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
@@ -326,13 +370,11 @@ export default async function DashboardPage() {
             最近使用した資料
           </h2>
           <p className="mb-4 text-[11px] text-gray-400">
-            ※ 資料・ファイル機能はPhase3で実装予定。以下はイメージ表示です
+            ※ 資料・ファイル管理機能は準備中です
           </p>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li>📄 職員会議資料_第3回.pdf</li>
-            <li>📄 学年通信_7月号.docx</li>
-            <li>📄 数学_一次関数_学習プリント.pdf</li>
-          </ul>
+          <p className="text-sm text-gray-400">
+            資料はまだアップロードされていません。
+          </p>
         </section>
       </div>
     </div>
@@ -348,14 +390,17 @@ function ProgressBar({
   label: string;
   value: number;
   color: string;
-  note?: boolean;
+  note?: boolean | string;
 }) {
+  const noteText = typeof note === "string" ? note : note ? "準備中" : null;
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
         <span>
           {label}
-          {note && <span className="ml-1 text-[10px] text-gray-300">(準備中)</span>}
+          {noteText && (
+            <span className="ml-1 text-[10px] text-gray-300">({noteText})</span>
+          )}
         </span>
         <span>{value}%</span>
       </div>

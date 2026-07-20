@@ -19,16 +19,32 @@ export default function WeekCalendar({
         今週の授業（週表示）
       </h2>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-400">
-        {WEEKDAY_LABELS.map((label, i) => (
-          <div key={label} className="py-1">
-            <p>{label}</p>
-            <p className="font-mono text-gray-600">{weekDates[i].getDate()}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+        {WEEKDAY_LABELS.map((label, i) => {
+          const isToday = weekDates[i].toDateString() === todayKey;
+          return (
+            <div key={label} className="py-1">
+              {isToday ? (
+                <div className="mx-auto flex w-fit flex-col items-center rounded-md bg-brand-600 px-2 py-0.5 text-white">
+                  <p className="text-[10px] leading-tight">{label}</p>
+                  <p className="font-mono text-sm font-semibold leading-tight">
+                    {weekDates[i].getDate()}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-400">{label}</p>
+                  <p className="font-mono text-gray-600">
+                    {weekDates[i].getDate()}
+                  </p>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div className="mt-1 grid grid-cols-7 gap-1">
+      <div className="mt-1.5 grid grid-cols-7 gap-1.5">
         {weekDates.map((d, dayOfWeek) => {
           const isToday = d.toDateString() === todayKey;
           const personal = personalSlotsByDay[dayOfWeek] ?? [];
@@ -37,15 +53,17 @@ export default function WeekCalendar({
           return (
             <div
               key={d.toISOString()}
-              className={`min-h-[88px] rounded-md border p-1 ${
-                isToday ? "border-brand-300 bg-brand-50" : "border-gray-100"
+              className={`min-h-[110px] rounded-md border p-1.5 ${
+                isToday
+                  ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
+                  : "border-gray-100"
               }`}
             >
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {personal.map((s) => (
                   <div
                     key={`p-${s.id}`}
-                    className="truncate rounded bg-brand-100 px-1 py-0.5 text-[9px] text-brand-700"
+                    className="truncate rounded bg-brand-100 px-1.5 py-1 text-[10px] font-medium text-brand-700"
                     title={`自分：${s.name}`}
                   >
                     {s.name}
@@ -54,7 +72,7 @@ export default function WeekCalendar({
                 {homeroom.map((s) => (
                   <div
                     key={`h-${s.id}`}
-                    className="truncate rounded bg-purple-100 px-1 py-0.5 text-[9px] text-purple-700"
+                    className="truncate rounded bg-purple-100 px-1.5 py-1 text-[10px] font-medium text-purple-700"
                     title={`担任クラス：${s.name}`}
                   >
                     {s.name}

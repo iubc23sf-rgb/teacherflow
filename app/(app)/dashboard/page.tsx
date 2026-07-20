@@ -80,9 +80,6 @@ export default async function DashboardPage({
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(now);
-  todayEnd.setHours(23, 59, 59, 999);
-  const todayDayOfWeek = (now.getDay() + 6) % 7;
 
   const monthDate = parseMonthParam(searchParams.month);
   const monthWeeks = buildMonthGrid(monthDate);
@@ -151,19 +148,6 @@ export default async function DashboardPage({
   const personalSlotsByDay = groupSlotsByDay(allSlots ?? [], personalTimetableId);
   const homeroomSlotsByDay = groupSlotsByDay(allSlots ?? [], homeroomTimetableId);
 
-  const todayPersonalSlots = (allSlots ?? [])
-    .filter(
-      (s: any) =>
-        s.timetable_id === personalTimetableId && s.day_of_week === todayDayOfWeek
-    )
-    .sort((a: any, b: any) => a.period - b.period);
-  const todayHomeroomSlots = (allSlots ?? [])
-    .filter(
-      (s: any) =>
-        s.timetable_id === homeroomTimetableId && s.day_of_week === todayDayOfWeek
-    )
-    .sort((a: any, b: any) => a.period - b.period);
-
   const totalTasks = allTasksThisWeek?.length ?? 0;
   const doneTasks =
     allTasksThisWeek?.filter((t: any) => t.status === "done").length ?? 0;
@@ -186,64 +170,28 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       {/* Row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">
-            今日の時間割
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <p className="mb-2 text-xs font-medium text-gray-500">
-                自分の時間割
-              </p>
-              {todayPersonalSlots.length > 0 ? (
-                <ul className="space-y-2">
-                  {todayPersonalSlots.map((slot: any) => (
-                    <li key={slot.id} className="flex items-start gap-2 text-sm">
-                      <span className="w-6 shrink-0 pt-0.5 font-mono text-xs text-gray-400">
-                        {slot.period}限
-                      </span>
-                      <span className="rounded-md bg-brand-50 px-2 py-1 text-brand-700">
-                        {slot.subjects?.name ?? "-"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-400">本日の予定はありません。</p>
-              )}
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-medium text-gray-500">
-                担任クラスの時間割
-              </p>
-              {todayHomeroomSlots.length > 0 ? (
-                <ul className="space-y-2">
-                  {todayHomeroomSlots.map((slot: any) => (
-                    <li key={slot.id} className="flex items-start gap-2 text-sm">
-                      <span className="w-6 shrink-0 pt-0.5 font-mono text-xs text-gray-400">
-                        {slot.period}限
-                      </span>
-                      <span className="rounded-md bg-purple-50 px-2 py-1 text-purple-700">
-                        {slot.subjects?.name ?? "-"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-400">本日の予定はありません。</p>
-              )}
-            </div>
-          </div>
-          <Link
-            href="/timetable"
-            className="mt-4 inline-block text-xs font-medium text-brand-600 hover:underline"
-          >
-            時間割を見る →
-          </Link>
-        </section>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+        <div className="lg:col-span-2">
+          <WeekCalendar
+            weekDates={weekDates}
+            personalSlotsByDay={personalSlotsByDay}
+            homeroomSlotsByDay={homeroomSlotsByDay}
+            todayKey={now.toDateString()}
+          />
+        </div>
 
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="lg:col-span-1">
+          <MonthCalendar
+            weeks={monthWeeks}
+            monthDate={monthDate}
+            monthLabel={`${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
+            prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
+            nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
+            todayKey={now.toDateString()}
+          />
+        </div>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-6 lg:col-span-1">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-700">タスクリスト</h2>
             <Link
@@ -294,23 +242,6 @@ export default async function DashboardPage({
             すべてのタスクを見る →
           </Link>
         </section>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <WeekCalendar
-          weekDates={weekDates}
-          personalSlotsByDay={personalSlotsByDay}
-          homeroomSlotsByDay={homeroomSlotsByDay}
-          todayKey={now.toDateString()}
-        />
-        <MonthCalendar
-          weeks={monthWeeks}
-          monthDate={monthDate}
-          monthLabel={`${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
-          prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-          nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-          todayKey={now.toDateString()}
-        />
       </div>
 
       {/* Row 2 */}

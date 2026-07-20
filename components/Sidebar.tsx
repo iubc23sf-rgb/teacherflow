@@ -19,15 +19,15 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/tasks", label: "ToDo / タスク", icon: "✅", implemented: true },
   { href: "/dashboard", label: "授業・教材", icon: "📖", implemented: false, badge: "Phase4" },
   { href: "/interviews", label: "面談記録", icon: "💬", implemented: true },
-  { href: "/dashboard", label: "資料・ファイル", icon: "📁", implemented: false, badge: "Phase3" },
+  { href: "/documents", label: "資料・ファイル", icon: "📁", implemented: true },
   { href: "/events", label: "行事・部活・校務", icon: "🗂️", implemented: true },
-  { href: "/assistant", label: "AIアシスタント", icon: "✨", implemented: true },
+  { href: "/dashboard", label: "AIアシスタント", icon: "✨", implemented: false, badge: "準備中" },
   { href: "/settings", label: "設定", icon: "⚙️", implemented: true },
 ];
 
 const QUICK_ACTIONS = [
   { label: "タスクを追加", href: "/tasks", implemented: true },
-  { label: "会議資料をアップロード", href: "/dashboard", implemented: false },
+  { label: "会議資料をアップロード", href: "/documents", implemented: true },
   { label: "生徒メモを追加", href: "/dashboard", implemented: false },
 ];
 

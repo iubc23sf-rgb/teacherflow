@@ -145,6 +145,16 @@ create table if not exists public.school_events (
   updated_at timestamptz default now()
 );
 
+-- 資料・ファイル管理。実体は Storage の "documents" バケットに保存し、ここではメタデータのみ持つ
+create table if not exists public.documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  file_name text not null,
+  storage_path text not null,
+  size_bytes bigint,
+  created_at timestamptz default now()
+);
+
 -- profiles を auth.users 作成時に自動生成するトリガー
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -176,6 +186,7 @@ alter table public.ai_chat_messages enable row level security;
 alter table public.pdf_imports enable row level security;
 alter table public.interview_records enable row level security;
 alter table public.school_events enable row level security;
+alter table public.documents enable row level security;
 
 -- 本人のデータのみ CRUD 可能にする標準ポリシー
 create policy "Individual access" on public.profiles for all using (auth.uid() = id) with check (auth.uid() = id);
@@ -190,6 +201,7 @@ create policy "Individual access" on public.ai_chat_sessions for all using (auth
 create policy "Individual access" on public.pdf_imports for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.interview_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.school_events for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Individual access" on public.documents for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Individual access via timetable" on public.timetable_slots for all using (
   exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
@@ -223,5 +235,6 @@ grant select, insert, update, delete on
   public.ai_chat_messages,
   public.pdf_imports,
   public.interview_records,
-  public.school_events
+  public.school_events,
+  public.documents
 to authenticated;

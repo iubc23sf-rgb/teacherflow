@@ -146,6 +146,7 @@ export default async function DashboardPage({
     { data: monthTasks, error: monthTasksError },
     { data: monthInterviews, error: monthInterviewsError },
     { data: monthEvents, error: monthEventsError },
+    { data: recentDocuments, error: recentDocumentsError },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -196,6 +197,12 @@ export default async function DashboardPage({
       .eq("user_id", userId)
       .gte("event_date", formatDateParam(monthGridStart))
       .lte("event_date", formatDateParam(monthGridEnd)),
+    supabase
+      .from("documents")
+      .select("id, file_name, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   logSupabaseError("dashboard.openTasks", openTasksError);
@@ -207,6 +214,7 @@ export default async function DashboardPage({
   logSupabaseError("dashboard.monthTasks", monthTasksError);
   logSupabaseError("dashboard.monthInterviews", monthInterviewsError);
   logSupabaseError("dashboard.monthEvents", monthEventsError);
+  logSupabaseError("dashboard.recentDocuments", recentDocumentsError);
 
   const personalSlotsByDay = groupSlotsByDay(allSlots ?? [], personalTimetableId);
   const homeroomSlotsByDay = groupSlotsByDay(allSlots ?? [], homeroomTimetableId);
@@ -476,15 +484,36 @@ export default async function DashboardPage({
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-1 text-sm font-semibold text-gray-700">
-            最近使用した資料
-          </h2>
-          <p className="mb-4 text-[11px] text-gray-400">
-            ※ 資料・ファイル管理機能は準備中です
-          </p>
-          <p className="text-sm text-gray-400">
-            資料はまだアップロードされていません。
-          </p>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">
+              最近使用した資料
+            </h2>
+            <Link
+              href="/documents"
+              className="text-xs font-medium text-brand-600 hover:underline"
+            >
+              + 追加
+            </Link>
+          </div>
+          {recentDocuments && recentDocuments.length > 0 ? (
+            <ul className="space-y-2 text-sm text-gray-600">
+              {recentDocuments.map((doc: any) => (
+                <li key={doc.id} className="truncate">
+                  📄 {doc.file_name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">
+              資料はまだアップロードされていません。
+            </p>
+          )}
+          <Link
+            href="/documents"
+            className="mt-4 inline-block text-xs font-medium text-brand-600 hover:underline"
+          >
+            すべての資料を見る →
+          </Link>
         </section>
       </div>
     </div>

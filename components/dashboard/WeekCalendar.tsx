@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
 
 type SlotBadge = { id: string; name: string };
@@ -7,17 +9,39 @@ export default function WeekCalendar({
   personalSlotsByDay,
   homeroomSlotsByDay,
   todayKey,
+  prevHref,
+  nextHref,
 }: {
   weekDates: Date[];
   personalSlotsByDay: Record<number, SlotBadge[]>;
   homeroomSlotsByDay: Record<number, SlotBadge[]>;
   todayKey: string;
+  prevHref: string;
+  nextHref: string;
 }) {
+  const weekLabel = `${weekDates[0].getFullYear()}年${
+    weekDates[0].getMonth() + 1
+  }月${weekDates[0].getDate()}日 〜 ${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`;
+
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-6">
-      <h2 className="mb-4 text-sm font-semibold text-gray-700">
-        今週の授業（週表示）
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <Link
+          href={prevHref}
+          className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
+        >
+          ← 前週
+        </Link>
+        <h2 className="text-sm font-semibold text-gray-700">
+          今週の授業（{weekLabel}）
+        </h2>
+        <Link
+          href={nextHref}
+          className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
+        >
+          翌週 →
+        </Link>
+      </div>
 
       <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
         {WEEKDAY_LABELS.map((label, i) => {

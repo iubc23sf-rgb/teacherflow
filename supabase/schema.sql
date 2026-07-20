@@ -133,6 +133,18 @@ create table if not exists public.interview_records (
   updated_at timestamptz default now()
 );
 
+-- 授業以外の予定（部活・校務分掌・学校行事など）。月表示カレンダーに表示する
+create table if not exists public.school_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null,
+  event_date date not null,
+  category text not null default 'other' check (category in ('club', 'duty', 'event', 'other')), -- club(部活) / duty(校務分掌) / event(学校行事) / other
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- profiles を auth.users 作成時に自動生成するトリガー
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -163,6 +175,7 @@ alter table public.ai_chat_sessions enable row level security;
 alter table public.ai_chat_messages enable row level security;
 alter table public.pdf_imports enable row level security;
 alter table public.interview_records enable row level security;
+alter table public.school_events enable row level security;
 
 -- 本人のデータのみ CRUD 可能にする標準ポリシー
 create policy "Individual access" on public.profiles for all using (auth.uid() = id) with check (auth.uid() = id);
@@ -176,6 +189,7 @@ create policy "Individual access" on public.lesson_progress for all using (auth.
 create policy "Individual access" on public.ai_chat_sessions for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.pdf_imports for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Individual access" on public.interview_records for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Individual access" on public.school_events for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Individual access via timetable" on public.timetable_slots for all using (
   exists (select 1 from public.timetables t where t.id = timetable_id and t.user_id = auth.uid())
@@ -208,5 +222,6 @@ grant select, insert, update, delete on
   public.ai_chat_sessions,
   public.ai_chat_messages,
   public.pdf_imports,
-  public.interview_records
+  public.interview_records,
+  public.school_events
 to authenticated;

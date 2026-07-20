@@ -54,6 +54,20 @@ function startOfWeek(date: Date) {
   return d;
 }
 
+function parseWeekParam(param?: string) {
+  if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
+    const [y, m, d] = param.split("-").map(Number);
+    return startOfWeek(new Date(y, m - 1, d));
+  }
+  return startOfWeek(new Date());
+}
+
+function formatDateParam(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 function groupSlotsByDay(slots: any[], timetableId: string) {
   const byDay: Record<number, { id: string; name: string }[]> = {};
   slots
@@ -66,10 +80,28 @@ function groupSlotsByDay(slots: any[], timetableId: string) {
   return byDay;
 }
 
+type DateBadge = { id: string; title: string; colorClass: string };
+
+function addDateBadge(
+  map: Record<string, DateBadge[]>,
+  dateKey: string,
+  badge: DateBadge
+) {
+  map[dateKey] = map[dateKey] ?? [];
+  map[dateKey].push(badge);
+}
+
+const EVENT_CATEGORY_STYLE: Record<string, string> = {
+  club: "bg-orange-100 text-orange-700",
+  duty: "bg-slate-200 text-slate-700",
+  event: "bg-green-100 text-green-700",
+  other: "bg-gray-200 text-gray-600",
+};
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { month?: string };
+  searchParams: { month?: string; week?: string };
 }) {
   const supabase = createClient();
   const {
@@ -85,13 +117,19 @@ export default async function DashboardPage({
   const monthWeeks = buildMonthGrid(monthDate);
   const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
   const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+  const monthGridStart = monthWeeks[0][0];
+  const monthGridEnd = monthWeeks[monthWeeks.length - 1][6];
 
-  const weekStart = startOfWeek(now);
+  const weekStart = parseWeekParam(searchParams.week);
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
   });
+  const prevWeekStart = new Date(weekStart);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const nextWeekStart = new Date(weekStart);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
 
   const [personalTimetableId, homeroomTimetableId] = await Promise.all([
     getOrCreateTimetableId(supabase, userId, "personal"),
@@ -105,6 +143,9 @@ export default async function DashboardPage({
     { data: lessonProgress, error: lessonProgressError },
     { data: upcomingInterviews, error: upcomingInterviewsError },
     { data: allSlots, error: allSlotsError },
+    { data: monthTasks, error: monthTasksError },
+    { data: monthInterviews, error: monthInterviewsError },
+    { data: monthEvents, error: monthEventsError },
   ] = await Promise.all([
     supabase
       .from("tasks")
@@ -136,6 +177,25 @@ export default async function DashboardPage({
       .from("timetable_slots")
       .select("*, subjects(name, color), classes(name)")
       .in("timetable_id", [personalTimetableId, homeroomTimetableId]),
+    supabase
+      .from("tasks")
+      .select("id, title, due_date")
+      .eq("user_id", userId)
+      .not("due_date", "is", null)
+      .gte("due_date", formatDateParam(monthGridStart))
+      .lte("due_date", formatDateParam(monthGridEnd)),
+    supabase
+      .from("interview_records")
+      .select("id, student_name, interview_date")
+      .eq("user_id", userId)
+      .gte("interview_date", formatDateParam(monthGridStart))
+      .lte("interview_date", formatDateParam(monthGridEnd)),
+    supabase
+      .from("school_events")
+      .select("id, title, event_date, category")
+      .eq("user_id", userId)
+      .gte("event_date", formatDateParam(monthGridStart))
+      .lte("event_date", formatDateParam(monthGridEnd)),
   ]);
 
   logSupabaseError("dashboard.openTasks", openTasksError);
@@ -144,9 +204,38 @@ export default async function DashboardPage({
   logSupabaseError("dashboard.lessonProgress", lessonProgressError);
   logSupabaseError("dashboard.upcomingInterviews", upcomingInterviewsError);
   logSupabaseError("dashboard.allSlots", allSlotsError);
+  logSupabaseError("dashboard.monthTasks", monthTasksError);
+  logSupabaseError("dashboard.monthInterviews", monthInterviewsError);
+  logSupabaseError("dashboard.monthEvents", monthEventsError);
 
   const personalSlotsByDay = groupSlotsByDay(allSlots ?? [], personalTimetableId);
   const homeroomSlotsByDay = groupSlotsByDay(allSlots ?? [], homeroomTimetableId);
+
+  const eventsByDate: Record<string, DateBadge[]> = {};
+  (monthTasks ?? []).forEach((t: any) => {
+    const key = new Date(`${t.due_date}T00:00:00`).toDateString();
+    addDateBadge(eventsByDate, key, {
+      id: `task-${t.id}`,
+      title: t.title,
+      colorClass: "bg-amber-100 text-amber-700",
+    });
+  });
+  (monthInterviews ?? []).forEach((i: any) => {
+    const key = new Date(`${i.interview_date}T00:00:00`).toDateString();
+    addDateBadge(eventsByDate, key, {
+      id: `interview-${i.id}`,
+      title: `面談：${i.student_name}`,
+      colorClass: "bg-purple-100 text-purple-700",
+    });
+  });
+  (monthEvents ?? []).forEach((e: any) => {
+    const key = new Date(`${e.event_date}T00:00:00`).toDateString();
+    addDateBadge(eventsByDate, key, {
+      id: `event-${e.id}`,
+      title: e.title,
+      colorClass: EVENT_CATEGORY_STYLE[e.category] ?? EVENT_CATEGORY_STYLE.other,
+    });
+  });
 
   const totalTasks = allTasksThisWeek?.length ?? 0;
   const doneTasks =
@@ -170,17 +259,19 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       {/* Row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">
           <WeekCalendar
             weekDates={weekDates}
             personalSlotsByDay={personalSlotsByDay}
             homeroomSlotsByDay={homeroomSlotsByDay}
             todayKey={now.toDateString()}
+            prevHref={`/dashboard?week=${formatDateParam(prevWeekStart)}`}
+            nextHref={`/dashboard?week=${formatDateParam(nextWeekStart)}`}
           />
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2">
           <MonthCalendar
             weeks={monthWeeks}
             monthDate={monthDate}
@@ -188,6 +279,7 @@ export default async function DashboardPage({
             prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
             nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
             todayKey={now.toDateString()}
+            eventsByDate={eventsByDate}
           />
         </div>
 

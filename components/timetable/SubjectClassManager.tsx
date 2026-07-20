@@ -6,9 +6,10 @@ import {
   deleteSubject,
   createClassGroup,
   deleteClassGroup,
+  updateSubjectWeeklyPeriods,
 } from "@/app/(app)/timetable/actions";
 
-type Subject = { id: string; name: string; color: string };
+type Subject = { id: string; name: string; color: string; weekly_periods: number | null };
 type ClassGroup = { id: string; name: string; grade: string | null };
 
 export default function SubjectClassManager({
@@ -28,18 +29,27 @@ export default function SubjectClassManager({
       <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <h3 className="mb-2 text-xs font-medium text-gray-500">科目</h3>
-          <form action={createSubject} className="mb-3 flex gap-2">
+          <form action={createSubject} className="mb-3 flex flex-wrap gap-2">
             <input
               name="name"
               required
               placeholder="例：数学"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="flex-1 min-w-[100px] rounded-md border border-gray-300 px-3 py-1.5 text-sm"
             />
             <input
               type="color"
               name="color"
               defaultValue="#3B82F6"
               className="h-8 w-10 rounded border border-gray-300"
+            />
+            <input
+              type="number"
+              name="weekly_periods"
+              min={0}
+              max={30}
+              defaultValue={0}
+              title="週コマ数（自動生成で使用）"
+              className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
             />
             <button
               type="submit"
@@ -54,20 +64,41 @@ export default function SubjectClassManager({
                 key={s.id}
                 className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm"
               >
-                <span className="flex items-center gap-2">
+                <span className="flex min-w-0 items-center gap-2">
                   <span
-                    className="h-2.5 w-2.5 rounded-full"
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: s.color }}
                   />
-                  {s.name}
+                  <span className="truncate">{s.name}</span>
                 </span>
-                <button
-                  disabled={isPending}
-                  onClick={() => startTransition(() => deleteSubject(s.id))}
-                  className="text-xs text-gray-300 hover:text-red-500"
-                >
-                  削除
-                </button>
+                <span className="flex shrink-0 items-center gap-2">
+                  <label className="flex items-center gap-1 text-[11px] text-gray-400">
+                    週
+                    <input
+                      type="number"
+                      min={0}
+                      max={30}
+                      defaultValue={s.weekly_periods ?? 0}
+                      onBlur={(e) => {
+                        const value = Number(e.target.value) || 0;
+                        if (value !== (s.weekly_periods ?? 0)) {
+                          startTransition(() =>
+                            updateSubjectWeeklyPeriods(s.id, value)
+                          );
+                        }
+                      }}
+                      className="w-12 rounded border border-gray-300 px-1 py-0.5 text-center text-xs"
+                    />
+                    コマ
+                  </label>
+                  <button
+                    disabled={isPending}
+                    onClick={() => startTransition(() => deleteSubject(s.id))}
+                    className="text-xs text-gray-300 hover:text-red-500"
+                  >
+                    削除
+                  </button>
+                </span>
               </li>
             ))}
             {subjects.length === 0 && (

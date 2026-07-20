@@ -4,6 +4,7 @@ import { logSupabaseError } from "@/lib/supabase/logError";
 import { getOrCreateTimetableId, type TimetableKind } from "@/lib/supabase/timetables";
 import TimetableGrid from "@/components/timetable/TimetableGrid";
 import SubjectClassManager from "@/components/timetable/SubjectClassManager";
+import AutoGenerateButton from "@/components/timetable/AutoGenerateButton";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,8 @@ export default async function TimetablePage({
       </div>
 
       <SubjectClassManager subjects={subjects ?? []} classes={classes ?? []} />
+
+      <AutoGenerateButton timetableId={timetableId} />
 
       <TimetableGrid
         timetableId={timetableId}

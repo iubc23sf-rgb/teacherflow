@@ -14,11 +14,28 @@ export async function createSubject(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
   const color = String(formData.get("color") ?? "#3B82F6");
+  const weekly_periods = Math.max(
+    0,
+    Number(formData.get("weekly_periods") ?? 0) || 0
+  );
 
   const { error } = await supabase
     .from("subjects")
-    .insert({ user_id: user.id, name, color });
+    .insert({ user_id: user.id, name, color, weekly_periods });
   logSupabaseError("timetable.createSubject", error);
+  revalidatePath("/timetable");
+}
+
+export async function updateSubjectWeeklyPeriods(
+  subjectId: string,
+  weeklyPeriods: number
+) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("subjects")
+    .update({ weekly_periods: Math.max(0, weeklyPeriods || 0) })
+    .eq("id", subjectId);
+  logSupabaseError("timetable.updateSubjectWeeklyPeriods", error);
   revalidatePath("/timetable");
 }
 
@@ -111,4 +128,103 @@ export async function saveSlot({
   }
 
   revalidatePath("/timetable");
+}
+
+const DAYS_PER_WEEK = 5; // 0=月 ... 4=金
+const PERIODS_PER_DAY = 6;
+
+export async function autoGenerateTimetable(timetableId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { placed: 0, unplaced: 0 };
+
+  const [{ data: subjects, error: subjectsError }, { data: slots, error: slotsError }] =
+    await Promise.all([
+      supabase
+        .from("subjects")
+        .select("id, weekly_periods")
+        .eq("user_id", user.id)
+        .gt("weekly_periods", 0),
+      supabase
+        .from("timetable_slots")
+        .select("day_of_week, period")
+        .eq("timetable_id", timetableId),
+    ]);
+  logSupabaseError("timetable.autoGenerate.subjects", subjectsError);
+  logSupabaseError("timetable.autoGenerate.slots", slotsError);
+
+  const occupied = new Set(
+    (slots ?? []).map((s: any) => `${s.day_of_week}-${s.period}`)
+  );
+
+  // 各科目が現在何曜日に入っているかを数え、自動生成でも分散を優先する
+  const dayCountBySubject: Record<string, number[]> = {};
+
+  const toInsert: {
+    timetable_id: string;
+    day_of_week: number;
+    period: number;
+    subject_id: string;
+  }[] = [];
+
+  let unplaced = 0;
+
+  const sortedSubjects = [...(subjects ?? [])].sort(
+    (a: any, b: any) => b.weekly_periods - a.weekly_periods
+  );
+
+  sortedSubjects.forEach((subject: any, subjectIndex: number) => {
+    dayCountBySubject[subject.id] = Array(DAYS_PER_WEEK).fill(0);
+    let remaining = subject.weekly_periods as number;
+    const dayOrder = Array.from(
+      { length: DAYS_PER_WEEK },
+      (_, i) => (i + subjectIndex) % DAYS_PER_WEEK
+    );
+
+    while (remaining > 0) {
+      // その科目がまだ入っていない曜日を優先。全曜日に入っていたら少ない曜日から
+      const daysBySparsity = [...dayOrder].sort(
+        (a, b) => dayCountBySubject[subject.id][a] - dayCountBySubject[subject.id][b]
+      );
+
+      let placedThisRound = false;
+      for (const day of daysBySparsity) {
+        let placedOnThisDay = false;
+        for (let period = 1; period <= PERIODS_PER_DAY; period++) {
+          const key = `${day}-${period}`;
+          if (occupied.has(key)) continue;
+          occupied.add(key);
+          toInsert.push({
+            timetable_id: timetableId,
+            day_of_week: day,
+            period,
+            subject_id: subject.id,
+          });
+          dayCountBySubject[subject.id][day] += 1;
+          remaining -= 1;
+          placedThisRound = true;
+          placedOnThisDay = true;
+          break;
+        }
+        if (placedOnThisDay) break;
+      }
+
+      if (!placedThisRound) {
+        unplaced += remaining;
+        remaining = 0;
+      }
+    }
+  });
+
+  if (toInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from("timetable_slots")
+      .insert(toInsert);
+    logSupabaseError("timetable.autoGenerate.insert", insertError);
+  }
+
+  revalidatePath("/timetable");
+  return { placed: toInsert.length, unplaced };
 }

@@ -15,6 +15,7 @@ create table if not exists public.subjects (
   user_id uuid not null references public.profiles(id) on delete cascade,
   name text not null,
   color text default '#3B82F6',
+  weekly_periods smallint default 0, -- 時間割の自動生成で使う週あたりのコマ数
   created_at timestamptz default now()
 );
 

@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/interviews", label: "面談記録", icon: "💬", implemented: true },
   { href: "/dashboard", label: "資料・ファイル", icon: "📁", implemented: false, badge: "Phase3" },
   { href: "/events", label: "行事・部活・校務", icon: "🗂️", implemented: true },
-  { href: "/dashboard", label: "AIアシスタント", icon: "✨", implemented: false, badge: "NEW" },
+  { href: "/assistant", label: "AIアシスタント", icon: "✨", implemented: true },
   { href: "/settings", label: "設定", icon: "⚙️", implemented: true },
 ];
 

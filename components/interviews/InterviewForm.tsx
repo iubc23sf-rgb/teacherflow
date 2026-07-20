@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { createInterview } from "@/app/(app)/interviews/actions";
+import DateField from "@/components/DateField";
 
 type ClassOption = { id: string; name: string };
 
 export default function InterviewForm({ classes }: { classes: ClassOption[] }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const [resetKey, setResetKey] = useState(0);
 
   return (
     <form
@@ -14,6 +16,7 @@ export default function InterviewForm({ classes }: { classes: ClassOption[] }) {
       action={async (formData) => {
         await createInterview(formData);
         formRef.current?.reset();
+        setResetKey((k) => k + 1);
       }}
       className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4"
     >
@@ -41,15 +44,7 @@ export default function InterviewForm({ classes }: { classes: ClassOption[] }) {
           ))}
         </select>
       </div>
-      <div>
-        <label className="mb-1 block text-xs text-gray-500">面談日</label>
-        <input
-          type="date"
-          name="interview_date"
-          required
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-        />
-      </div>
+      <DateField key={resetKey} name="interview_date" label="面談日" required />
       <div>
         <label className="mb-1 block text-xs text-gray-500">種別</label>
         <select

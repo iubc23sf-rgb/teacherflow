@@ -84,7 +84,7 @@ export default function WeekCalendar({
           return (
             <Link
               key={d.toISOString()}
-              href={`/timetable?date=${formatDateParam(d)}`}
+              href={`/timetable/special?date=${formatDateParam(d)}`}
               className={`block min-h-[110px] rounded-md border p-1.5 transition hover:border-brand-300 hover:bg-brand-50/40 ${
                 isToday
                   ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"

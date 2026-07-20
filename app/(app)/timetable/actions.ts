@@ -281,6 +281,74 @@ export async function saveOverride({
   }
 
   revalidatePath("/timetable");
+  revalidatePath("/timetable/special");
+  revalidatePath("/dashboard");
+}
+
+const PERIODS_IN_DAY = [1, 2, 3, 4, 5, 6];
+
+// その日の学校の時間割を、別の曜日のパターンに丸ごと差し替える（例：今日を月曜日の時間割にする）。
+// 自分の時間割・担任クラスの時間割の両方に同じ曜日パターンを適用する。
+export async function applyDaySwap({
+  date,
+  sourceDayOfWeek,
+  timetableIds,
+}: {
+  date: string;
+  sourceDayOfWeek: number;
+  timetableIds: string[];
+}) {
+  const supabase = createClient();
+
+  for (const timetableId of timetableIds) {
+    const { data: recurring, error: recurringError } = await supabase
+      .from("timetable_slots")
+      .select("period, subject_id, class_id, room")
+      .eq("timetable_id", timetableId)
+      .eq("day_of_week", sourceDayOfWeek);
+    logSupabaseError("timetable.applyDaySwap.select", recurringError);
+
+    const byPeriod = new Map<number, any>();
+    (recurring ?? []).forEach((s: any) => byPeriod.set(s.period, s));
+
+    const { data: existingOverrides, error: existingError } = await supabase
+      .from("timetable_overrides")
+      .select("id, period")
+      .eq("timetable_id", timetableId)
+      .eq("override_date", date);
+    logSupabaseError("timetable.applyDaySwap.existing", existingError);
+
+    const existingByPeriod = new Map<number, string>();
+    (existingOverrides ?? []).forEach((o: any) => existingByPeriod.set(o.period, o.id));
+
+    for (const period of PERIODS_IN_DAY) {
+      const slot = byPeriod.get(period);
+      const payload = {
+        subject_id: slot?.subject_id ?? null,
+        custom_label: null,
+        class_id: slot?.class_id ?? null,
+        room: slot?.room ?? null,
+      };
+      const existingId = existingByPeriod.get(period);
+      if (existingId) {
+        const { error } = await supabase
+          .from("timetable_overrides")
+          .update(payload)
+          .eq("id", existingId);
+        logSupabaseError("timetable.applyDaySwap.update", error);
+      } else {
+        const { error } = await supabase.from("timetable_overrides").insert({
+          timetable_id: timetableId,
+          override_date: date,
+          period,
+          ...payload,
+        });
+        logSupabaseError("timetable.applyDaySwap.insert", error);
+      }
+    }
+  }
+
+  revalidatePath("/timetable/special");
   revalidatePath("/dashboard");
 }
 
@@ -302,5 +370,6 @@ export async function clearOverride({
     .eq("period", period);
   logSupabaseError("timetable.clearOverride", error);
   revalidatePath("/timetable");
+  revalidatePath("/timetable/special");
   revalidatePath("/dashboard");
 }

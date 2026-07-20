@@ -49,6 +49,43 @@ Google カレンダー同期・タスク管理・時間割・AI を1つにまと
 
 - `.env.local` にはSupabaseの接続情報が入っているため、gitにコミットしないよう `.gitignore` を確認すること
 - Supabaseの `service_role` キーは絶対にフロントエンドコードに含めないこと
+
+### 【重要・要対応】全テーブルで GRANT 不足により読み書きができていなかった
+
+2026-07-20 の動作検証で判明。`schema.sql` はテーブル作成とRLSポリシーのみで、
+`authenticated` ロールへの GRANT が一切なかったため、ログイン後の全ての
+テーブル操作が `permission denied for table ...` (42501) で失敗していた。
+アプリ側のコードがSupabaseのレスポンスの `error` を確認せず `data` を
+`?? []` 等で握りつぶしていたため、画面上は「データがありません」という
+正常な空状態に見えてしまい、これまで気づかれていなかった。
+
+**対応済み:** `schema.sql` に GRANT 文を追加。ただし本番のSupabaseプロジェクトには
+自動反映されないため、SQL Editorで以下を一度実行する必要がある（未実行の場合、
+ダッシュボード・タスク管理・時間割など全機能が実データで動作しない）:
+
+```sql
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on
+  public.profiles,
+  public.subjects,
+  public.classes,
+  public.tasks,
+  public.calendar_events,
+  public.google_oauth_tokens,
+  public.timetables,
+  public.timetable_slots,
+  public.lesson_progress,
+  public.ai_chat_sessions,
+  public.ai_chat_messages,
+  public.pdf_imports
+to authenticated;
+```
+
+**要検討:** アプリ側でも `{ error }` を確認せず失敗を握りつぶしている箇所が
+多数ある（dashboard/tasks/timetableの各ページ・actions）。今回のような権限
+エラーが将来また起きても画面上は「空」にしか見えないため、最低限コンソール
+ログに出す等のエラーハンドリング追加を検討したい。
+
 - `supabase/schema.sql` の `timetable_slots` に `unique (timetable_id, day_of_week, period)` を追加した。既存のSupabaseプロジェクトは `create table if not exists` のため自動反映されないので、SQL Editorで以下を一度実行すること:
   ```sql
   alter table public.timetable_slots

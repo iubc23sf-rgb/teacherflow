@@ -172,3 +172,24 @@ create policy "Individual access via session" on public.ai_chat_messages for all
 ) with check (
   exists (select 1 from public.ai_chat_sessions s where s.id = session_id and s.user_id = auth.uid())
 );
+
+-- 権限付与（重要）
+-- RLS ポリシーはテーブルへの GRANT があって初めて機能する。GRANT がないと
+-- authenticated ロールからのアクセスは RLS を評価する前に 42501 (permission
+-- denied) で拒否される。SQL Editor でテーブルを作成した場合は自動付与され
+-- ないため明示的に grant する。
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on
+  public.profiles,
+  public.subjects,
+  public.classes,
+  public.tasks,
+  public.calendar_events,
+  public.google_oauth_tokens,
+  public.timetables,
+  public.timetable_slots,
+  public.lesson_progress,
+  public.ai_chat_sessions,
+  public.ai_chat_messages,
+  public.pdf_imports
+to authenticated;

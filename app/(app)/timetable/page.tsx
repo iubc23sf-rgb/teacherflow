@@ -1,86 +1,68 @@
 import { createClient } from "@/lib/supabase/server";
+import TimetableGrid from "@/components/timetable/TimetableGrid";
+import SubjectClassManager from "@/components/timetable/SubjectClassManager";
 
 export const dynamic = "force-dynamic";
 
-const DAYS = ["月", "火", "水", "木", "金"];
-const PERIODS = [1, 2, 3, 4, 5, 6];
+async function getOrCreateTimetableId(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+) {
+  const { data: existing } = await supabase
+    .from("timetables")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing.id as string;
+
+  const { data: created } = await supabase
+    .from("timetables")
+    .insert({ user_id: userId, name: "通常時間割" })
+    .select("id")
+    .single();
+  return created?.id as string;
+}
 
 export default async function TimetablePage() {
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const userId = user?.id ?? "";
 
-  const { data: timetable } = await supabase
-    .from("timetables")
-    .select("id")
-    .eq("user_id", user?.id ?? "")
-    .limit(1)
-    .maybeSingle();
+  const timetableId = await getOrCreateTimetableId(supabase, userId);
 
-  const { data: slots } = timetable
-    ? await supabase
+  const [{ data: slots }, { data: subjects }, { data: classes }] =
+    await Promise.all([
+      supabase
         .from("timetable_slots")
         .select("*, subjects(name, color), classes(name)")
-        .eq("timetable_id", timetable.id)
-    : { data: [] as any[] };
-
-  const slotMap = new Map<string, any>();
-  (slots ?? []).forEach((slot: any) => {
-    slotMap.set(`${slot.day_of_week}-${slot.period}`, slot);
-  });
+        .eq("timetable_id", timetableId),
+      supabase
+        .from("subjects")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("classes")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true }),
+    ]);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <h1 className="text-2xl font-bold">時間割</h1>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="w-16 px-3 py-2 text-left text-xs text-gray-400">
-                時限
-              </th>
-              {DAYS.map((day) => (
-                <th key={day} className="px-3 py-2 text-center font-medium">
-                  {day}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PERIODS.map((period) => (
-              <tr key={period} className="border-b border-gray-100 last:border-0">
-                <td className="px-3 py-3 text-xs text-gray-400">{period}</td>
-                {DAYS.map((_, dayIndex) => {
-                  const slot = slotMap.get(`${dayIndex}-${period}`);
-                  return (
-                    <td key={dayIndex} className="px-2 py-2 text-center">
-                      {slot ? (
-                        <div className="rounded-md bg-brand-50 px-2 py-1.5">
-                          <p className="text-xs font-medium text-brand-700">
-                            {slot.subjects?.name ?? "-"}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            {slot.classes?.name ?? ""} {slot.room ?? ""}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-gray-200">-</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SubjectClassManager subjects={subjects ?? []} classes={classes ?? []} />
 
-      <p className="text-xs text-gray-400">
-        時間割データが空の場合は Supabase の timetables / timetable_slots
-        テーブルにレコードを登録してください（Phase2 で編集UIを追加予定）。
-      </p>
+      <TimetableGrid
+        timetableId={timetableId}
+        slots={(slots ?? []) as any}
+        subjects={subjects ?? []}
+        classes={classes ?? []}
+      />
     </div>
   );
 }

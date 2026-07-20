@@ -28,23 +28,30 @@ Google カレンダー同期・タスク管理・時間割・AI を1つにまと
 - `.env.local` に Supabase の URL / anon key 設定済み
 - `npm install` 実施済み、`npm run dev` でローカル起動確認済み（http://localhost:3000）
 - ログイン画面にメールのマジックリンクログインを追加済み（Google OAuth設定不要でお試し可能）
+- git リポジトリ化済み
+- ダッシュボードのモック表示を実データ/空状態表示に置き換え済み（授業準備の進捗は`lesson_progress`から計算、PDF由来タスクは`tasks(source='pdf')`を表示、面談予定・資料一覧は未実装機能として空状態表示）
+- 時間割の編集UIを実装済み（`app/(app)/timetable/`）。科目・クラスの追加/削除、セルクリックでの科目・クラス・教室の割り当て/クリアが可能。ユーザーの`timetables`レコードが無い場合は初回アクセス時に自動作成
 
 ## 未実装（Phase2以降、PRD参照）
 
-- 時間割の編集UI・自動生成
+- 時間割の自動生成（編集UIは実装済み）
 - Googleカレンダーとの実際の同期処理
 - AIチャット、PDF→ToDo、授業進度管理の編集UI（ダッシュボードにはモック表示のみあり）
 - 面談記録、座席表などの学級経営機能
-- クラス管理、テスト・成績管理、資料・ファイル管理
+- クラス管理（一覧・詳細画面）、テスト・成績管理、資料・ファイル管理
 
 ## 次にやると良さそうなこと
 
-1. git リポジトリ化（現状 git 管理されていない）
-2. ダッシュボードのモック表示（AI提案、面談予定、最近の資料など）を実データに置き換え
-3. Phase2機能から優先順位をつけて実装
-4. テストユーザー向けにVercelなどへデプロイ
+1. Phase2機能の続き（Googleカレンダー同期 or 面談記録機能）を優先順位をつけて実装
+2. テストユーザー向けにVercelなどへデプロイ
 
 ## 注意事項
 
 - `.env.local` にはSupabaseの接続情報が入っているため、gitにコミットしないよう `.gitignore` を確認すること
 - Supabaseの `service_role` キーは絶対にフロントエンドコードに含めないこと
+- `supabase/schema.sql` の `timetable_slots` に `unique (timetable_id, day_of_week, period)` を追加した。既存のSupabaseプロジェクトは `create table if not exists` のため自動反映されないので、SQL Editorで以下を一度実行すること:
+  ```sql
+  alter table public.timetable_slots
+    add constraint timetable_slots_timetable_id_day_of_week_period_key
+    unique (timetable_id, day_of_week, period);
+  ```

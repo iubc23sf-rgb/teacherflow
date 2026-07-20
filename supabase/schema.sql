@@ -78,7 +78,8 @@ create table if not exists public.timetable_slots (
   subject_id uuid references public.subjects(id) on delete set null,
   class_id uuid references public.classes(id) on delete set null,
   room text,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  unique (timetable_id, day_of_week, period)
 );
 
 create table if not exists public.lesson_progress (

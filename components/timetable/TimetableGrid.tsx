@@ -120,7 +120,7 @@ export default function TimetableGrid({
                             </p>
                           </>
                         ) : (
-                          <span className="text-gray-200">-</span>
+                          <span className="text-xs text-gray-300">空きコマ</span>
                         )}
                       </button>
                     </td>

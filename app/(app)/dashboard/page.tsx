@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/logError";
 import { getOrCreateTimetableId } from "@/lib/supabase/timetables";
 import MonthCalendar from "@/components/dashboard/MonthCalendar";
+import WeekCalendar from "@/components/dashboard/WeekCalendar";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,14 @@ function buildMonthGrid(monthDate: Date) {
   return weeks;
 }
 
+function startOfWeek(date: Date) {
+  const d = new Date(date);
+  const day = (d.getDay() + 6) % 7; // 0 = 月曜
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
 function groupSlotsByDay(slots: any[], timetableId: string) {
   const byDay: Record<number, { id: string; name: string }[]> = {};
   slots
@@ -79,6 +88,13 @@ export default async function DashboardPage({
   const monthWeeks = buildMonthGrid(monthDate);
   const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1);
   const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+
+  const weekStart = startOfWeek(now);
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
 
   const [personalTimetableId, homeroomTimetableId] = await Promise.all([
     getOrCreateTimetableId(supabase, userId, "personal"),
@@ -280,16 +296,22 @@ export default async function DashboardPage({
         </section>
       </div>
 
-      <MonthCalendar
-        weeks={monthWeeks}
-        monthDate={monthDate}
-        personalSlotsByDay={personalSlotsByDay}
-        homeroomSlotsByDay={homeroomSlotsByDay}
-        monthLabel={`${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
-        prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
-        nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
-        todayKey={now.toDateString()}
-      />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <WeekCalendar
+          weekDates={weekDates}
+          personalSlotsByDay={personalSlotsByDay}
+          homeroomSlotsByDay={homeroomSlotsByDay}
+          todayKey={now.toDateString()}
+        />
+        <MonthCalendar
+          weeks={monthWeeks}
+          monthDate={monthDate}
+          monthLabel={`${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
+          prevHref={`/dashboard?month=${formatMonthParam(prevMonth)}`}
+          nextHref={`/dashboard?month=${formatMonthParam(nextMonth)}`}
+          todayKey={now.toDateString()}
+        />
+      </div>
 
       {/* Row 2 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

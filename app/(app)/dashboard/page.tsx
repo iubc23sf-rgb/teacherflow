@@ -331,7 +331,7 @@ export default async function DashboardPage({
         <section className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="mb-4 text-sm font-semibold text-gray-700">次の授業</h2>
           <p className="text-sm text-gray-400">
-            「今日の時間割」から次のコマを確認できます。
+            「今週の授業」から本日のコマを確認できます。
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
             {["授業ノートを開く", "教材・プリント", "板書計画"].map((label) => (

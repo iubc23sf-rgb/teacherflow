@@ -17,7 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "カレンダー", icon: "📅", implemented: false, badge: "Phase2" },
   { href: "/timetable", label: "時間割", icon: "🗓️", implemented: true },
   { href: "/tasks", label: "ToDo / タスク", icon: "✅", implemented: true },
-  { href: "/dashboard", label: "授業・教材", icon: "📖", implemented: false, badge: "Phase4" },
+  { href: "/lesson-progress", label: "授業進度管理", icon: "📖", implemented: true },
   { href: "/interviews", label: "面談記録", icon: "💬", implemented: true },
   { href: "/documents", label: "資料・ファイル", icon: "📁", implemented: true },
   { href: "/events", label: "行事・部活・校務", icon: "🗂️", implemented: true },

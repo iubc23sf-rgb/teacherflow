@@ -460,9 +460,15 @@ export default async function DashboardPage({
         </section>
 
         <section className="rounded-xl border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold text-gray-700">
-            今週の進捗
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">今週の進捗</h2>
+            <Link
+              href="/lesson-progress"
+              className="text-xs font-medium text-brand-600 hover:underline"
+            >
+              授業進度管理を開く
+            </Link>
+          </div>
           <div className="space-y-4">
             <ProgressBar label="タスクの進捗" value={taskProgress} color="bg-green-500" />
             <ProgressBar

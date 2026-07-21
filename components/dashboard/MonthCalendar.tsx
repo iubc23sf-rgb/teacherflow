@@ -1,6 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useTransition } from "react";
+import { getDragPayload } from "@/lib/dnd";
+import { updateTaskDueDate } from "@/app/(app)/tasks/actions";
 
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
+
+function formatDateParam(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 type DateBadge = { id: string; title: string; colorClass: string };
 
@@ -21,6 +33,9 @@ export default function MonthCalendar({
   todayKey: string;
   eventsByDate: Record<string, DateBadge[]>;
 }) {
+  const [, startTransition] = useTransition();
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -53,13 +68,28 @@ export default function MonthCalendar({
             const isCurrentMonth = d.getMonth() === monthDate.getMonth();
             const isToday = d.toDateString() === todayKey;
             const badges = eventsByDate[d.toDateString()] ?? [];
+            const dateKey = formatDateParam(d);
+            const isDragOver = dragOverDate === dateKey;
 
             return (
               <div
                 key={d.toISOString()}
-                className={`min-h-[100px] rounded-md border p-1.5 ${
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={() => setDragOverDate(dateKey)}
+                onDragLeave={() =>
+                  setDragOverDate((k) => (k === dateKey ? null : k))
+                }
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverDate(null);
+                  const payload = getDragPayload(e);
+                  if (payload?.source === "task") {
+                    startTransition(() => updateTaskDueDate(payload.taskId, dateKey));
+                  }
+                }}
+                className={`min-h-[100px] rounded-md border p-1.5 transition ${
                   isToday ? "border-brand-300 bg-brand-50" : "border-gray-100"
-                }`}
+                } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
               >
                 <p
                   className={`text-xs ${

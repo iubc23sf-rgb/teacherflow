@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type DragEvent } from "react";
 import { saveSlot } from "@/app/(app)/timetable/actions";
+import { setDragPayload, getDragPayload } from "@/lib/dnd";
 
 const DAYS = ["月", "火", "水", "木", "金"];
 const PERIODS = [1, 2, 3, 4, 5, 6];
@@ -34,9 +35,54 @@ export default function TimetableGrid({
   const [editing, setEditing] = useState<{ day: number; period: number } | null>(
     null
   );
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   const slotMap = new Map<string, Slot>();
   slots.forEach((slot) => slotMap.set(`${slot.day_of_week}-${slot.period}`, slot));
+
+  function handleDrop(e: DragEvent, day: number, period: number) {
+    e.preventDefault();
+    setDragOverKey(null);
+    const payload = getDragPayload(e);
+    if (!payload) return;
+
+    if (payload.source === "slot") {
+      if (payload.day === day && payload.period === period) return;
+      const sourceSlot = slotMap.get(`${payload.day}-${payload.period}`);
+      const targetSlot = slotMap.get(`${day}-${period}`);
+      if (!sourceSlot) return;
+      startTransition(async () => {
+        await saveSlot({
+          timetableId,
+          dayOfWeek: day,
+          period,
+          subjectId: sourceSlot.subject_id,
+          classId: sourceSlot.class_id,
+          room: sourceSlot.room,
+        });
+        await saveSlot({
+          timetableId,
+          dayOfWeek: payload.day,
+          period: payload.period,
+          subjectId: targetSlot?.subject_id ?? null,
+          classId: targetSlot?.class_id ?? null,
+          room: targetSlot?.room ?? null,
+        });
+      });
+    } else if (payload.source === "subject") {
+      const targetSlot = slotMap.get(`${day}-${period}`);
+      startTransition(async () => {
+        await saveSlot({
+          timetableId,
+          dayOfWeek: day,
+          period,
+          subjectId: payload.subjectId,
+          classId: targetSlot?.class_id ?? null,
+          room: targetSlot?.room ?? null,
+        });
+      });
+    }
+  }
 
   const editingSlot = editing
     ? slotMap.get(`${editing.day}-${editing.period}`)
@@ -101,14 +147,29 @@ export default function TimetableGrid({
                   const slot = slotMap.get(`${dayIndex}-${period}`);
                   const isEditing =
                     editing?.day === dayIndex && editing?.period === period;
+                  const cellKey = `${dayIndex}-${period}`;
+                  const isDragOver = dragOverKey === cellKey;
                   return (
                     <td key={dayIndex} className="px-1.5 py-1.5 text-center">
                       <button
                         type="button"
+                        draggable={!!slot}
+                        onDragStart={(e) => {
+                          if (!slot) return;
+                          setDragPayload(e, { source: "slot", day: dayIndex, period });
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDragEnter={() => setDragOverKey(cellKey)}
+                        onDragLeave={() =>
+                          setDragOverKey((k) => (k === cellKey ? null : k))
+                        }
+                        onDrop={(e) => handleDrop(e, dayIndex, period)}
                         onClick={() => setEditing({ day: dayIndex, period })}
                         className={`w-full rounded-md px-2 py-1.5 text-left transition ${
                           isEditing ? "ring-2 ring-brand-500" : "hover:bg-gray-50"
-                        } ${slot ? "bg-brand-50" : ""}`}
+                        } ${slot ? "cursor-grab bg-brand-50 active:cursor-grabbing" : ""} ${
+                          isDragOver ? "ring-2 ring-orange-400" : ""
+                        }`}
                       >
                         {slot ? (
                           <>

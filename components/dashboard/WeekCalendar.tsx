@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useTransition } from "react";
+import { getDragPayload } from "@/lib/dnd";
+import { updateTaskDueDate } from "@/app/(app)/tasks/actions";
 
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
@@ -29,6 +34,9 @@ export default function WeekCalendar({
   const weekLabel = `${weekDates[0].getFullYear()}年${
     weekDates[0].getMonth() + 1
   }月${weekDates[0].getDate()}日 〜 ${weekDates[4].getMonth() + 1}月${weekDates[4].getDate()}日`;
+
+  const [, startTransition] = useTransition();
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white p-6">
@@ -80,16 +88,31 @@ export default function WeekCalendar({
           const isToday = d.toDateString() === todayKey;
           const personal = personalSlotsByDay[dayOfWeek] ?? [];
           const homeroom = homeroomSlotsByDay[dayOfWeek] ?? [];
+          const dateKey = formatDateParam(d);
+          const isDragOver = dragOverDate === dateKey;
 
           return (
             <Link
               key={d.toISOString()}
-              href={`/timetable/special?date=${formatDateParam(d)}`}
+              href={`/timetable/special?date=${dateKey}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={() => setDragOverDate(dateKey)}
+              onDragLeave={() =>
+                setDragOverDate((k) => (k === dateKey ? null : k))
+              }
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverDate(null);
+                const payload = getDragPayload(e);
+                if (payload?.source === "task") {
+                  startTransition(() => updateTaskDueDate(payload.taskId, dateKey));
+                }
+              }}
               className={`block min-h-[110px] rounded-md border p-1.5 transition hover:border-brand-300 hover:bg-brand-50/40 ${
                 isToday
                   ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
                   : "border-gray-100"
-              }`}
+              } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
             >
               <div className="space-y-1">
                 {personal.map((s) => (

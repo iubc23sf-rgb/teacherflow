@@ -8,6 +8,7 @@ import {
   deleteClassGroup,
   updateSubjectWeeklyPeriods,
 } from "@/app/(app)/timetable/actions";
+import { setDragPayload } from "@/lib/dnd";
 
 type Subject = { id: string; name: string; color: string; weekly_periods: number | null };
 type ClassGroup = { id: string; name: string; grade: string | null };
@@ -58,11 +59,16 @@ export default function SubjectClassManager({
               追加
             </button>
           </form>
+          <p className="mb-1.5 text-[11px] text-gray-400">
+            科目をドラッグして時間割のコマに割り当てられます
+          </p>
           <ul className="space-y-1">
             {subjects.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm"
+                draggable
+                onDragStart={(e) => setDragPayload(e, { source: "subject", subjectId: s.id })}
+                className="flex cursor-grab items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm active:cursor-grabbing"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <span

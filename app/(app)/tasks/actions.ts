@@ -41,6 +41,18 @@ export async function toggleTask(taskId: string, done: boolean) {
   revalidatePath("/tasks");
 }
 
+export async function updateTaskDueDate(taskId: string, dueDate: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ due_date: dueDate })
+    .eq("id", taskId);
+  logSupabaseError("tasks.updateTaskDueDate", error);
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);

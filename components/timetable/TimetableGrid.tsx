@@ -142,7 +142,9 @@ export default function TimetableGrid({
           <tbody>
             {PERIODS.map((period) => (
               <tr key={period} className="border-b border-gray-100 last:border-0">
-                <td className="px-3 py-3 text-xs text-gray-400">{period}</td>
+                <td className="px-3 py-3 text-xs font-medium text-gray-500">
+                  {period}限
+                </td>
                 {DAYS.map((_, dayIndex) => {
                   const slot = slotMap.get(`${dayIndex}-${period}`);
                   const isEditing =
@@ -165,11 +167,13 @@ export default function TimetableGrid({
                         }
                         onDrop={(e) => handleDrop(e, dayIndex, period)}
                         onClick={() => setEditing({ day: dayIndex, period })}
-                        className={`w-full rounded-md px-2 py-1.5 text-left transition ${
-                          isEditing ? "ring-2 ring-brand-500" : "hover:bg-gray-50"
-                        } ${slot ? "cursor-grab bg-brand-50 active:cursor-grabbing" : ""} ${
-                          isDragOver ? "ring-2 ring-orange-400" : ""
-                        }`}
+                        className={`min-h-[52px] w-full rounded-md px-2 py-1.5 text-left transition ${
+                          isEditing ? "ring-2 ring-brand-500" : ""
+                        } ${
+                          slot
+                            ? "cursor-grab bg-brand-50 hover:bg-brand-100 active:cursor-grabbing"
+                            : "border border-dashed border-gray-200 bg-gray-50/50 hover:border-brand-300 hover:bg-brand-50/30"
+                        } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
                       >
                         {slot ? (
                           <>
@@ -181,7 +185,7 @@ export default function TimetableGrid({
                             </p>
                           </>
                         ) : (
-                          <span className="text-xs text-gray-300">空きコマ</span>
+                          <span className="text-xs text-gray-400">空きコマ</span>
                         )}
                       </button>
                     </td>

@@ -102,7 +102,7 @@ export default async function SpecialDayPage({
             overridesForDate={personalOverrides as any}
             subjects={subjects ?? []}
             classes={classes ?? []}
-            backHref="/timetable?kind=personal"
+            backHref="/timetable"
           />
         </div>
         <div>
@@ -117,7 +117,7 @@ export default async function SpecialDayPage({
             overridesForDate={homeroomOverrides as any}
             subjects={subjects ?? []}
             classes={classes ?? []}
-            backHref="/timetable?kind=homeroom"
+            backHref="/timetable"
           />
         </div>
       </div>

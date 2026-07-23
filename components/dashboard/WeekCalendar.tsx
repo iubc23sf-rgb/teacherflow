@@ -341,7 +341,7 @@ function LessonTimeGrid({
   );
   const laneRow = (lane: TaskTimeSlot) => (
     <tr key={`lane-${lane}`} className="border-b border-gray-50 bg-gray-50/60 last:border-0">
-      <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
+      <td className="w-16 px-2 py-1 align-top text-[10px] font-medium text-gray-500">
         {TASK_LANE_LABEL[lane]}
       </td>
       {weekDates.map((d, dayIndex) => {
@@ -405,7 +405,7 @@ function LessonTimeGrid({
 
   const allDayRow = () => (
     <tr className="border-b border-gray-100 bg-gray-50/40">
-      <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
+      <td className="w-16 px-2 py-1 align-top text-[10px] font-medium text-gray-500">
         予定
       </td>
       {weekDates.map((d, dayIndex) => {
@@ -487,7 +487,7 @@ function LessonTimeGrid({
     <div className="mt-3 rounded-lg border border-gray-100 p-3">
       <p className="mb-2 text-xs font-semibold text-gray-500">{title}</p>
       <div className="overflow-hidden rounded-md border border-gray-100">
-        <table className="w-full text-xs">
+        <table className="w-full table-fixed text-xs">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="w-16 px-2 py-1 text-left text-[10px] text-gray-400">
@@ -514,7 +514,7 @@ function LessonTimeGrid({
             {BELL_SCHEDULE.map(({ period, start, end }) => (
               <Fragment key={period}>
                 <tr className="border-b border-gray-50 last:border-0">
-                  <td className="px-2 py-1 align-top text-[10px] leading-tight text-gray-400">
+                  <td className="w-16 px-2 py-1 align-top text-[10px] leading-tight text-gray-400">
                     <p className="font-medium text-gray-500">{period}限</p>
                     <p>
                       {start}

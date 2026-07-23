@@ -4,7 +4,6 @@ import { logSupabaseError } from "@/lib/supabase/logError";
 import { getOrCreateTimetableId } from "@/lib/supabase/timetables";
 import MonthCalendar from "@/components/dashboard/MonthCalendar";
 import WeekCalendar from "@/components/dashboard/WeekCalendar";
-import DashboardTaskList from "@/components/dashboard/DashboardTaskList";
 
 export const dynamic = "force-dynamic";
 
@@ -396,9 +395,8 @@ export default async function DashboardPage({
         eventsByDay={weekEventsByDay}
         lessonProgressByDay={weekLessonProgressByDay}
         taskLanesByDay={taskLanesByDay}
+        allTasks={(openTasks ?? []) as any}
       />
-
-      <DashboardTaskList tasks={(openTasks ?? []) as any} />
 
       <MonthCalendar
         weeks={monthWeeks}

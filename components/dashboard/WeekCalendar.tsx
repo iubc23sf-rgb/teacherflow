@@ -15,6 +15,7 @@ import { updateEventDate } from "@/app/(app)/events/actions";
 import { updateTargetTestDate } from "@/app/(app)/lesson-progress/actions";
 import { saveOverride } from "@/app/(app)/timetable/actions";
 import { BELL_SCHEDULE } from "@/lib/bellSchedule";
+import DashboardTaskList from "@/components/dashboard/DashboardTaskList";
 
 const TASK_LANE_LABEL: Record<TaskTimeSlot, string> = {
   morning: "朝",
@@ -77,6 +78,7 @@ export default function WeekCalendar({
   eventsByDay,
   lessonProgressByDay,
   taskLanesByDay,
+  allTasks,
 }: {
   weekDates: Date[];
   todayKey: string;
@@ -91,6 +93,7 @@ export default function WeekCalendar({
   eventsByDay: Record<number, EventChip[]>;
   lessonProgressByDay: Record<number, LessonProgressChip[]>;
   taskLanesByDay: Record<number, TaskLanes>;
+  allTasks: { id: string; title: string; due_date: string | null; priority: number }[];
 }) {
   const weekLabel = `${weekDates[0].getFullYear()}年${
     weekDates[0].getMonth() + 1
@@ -302,21 +305,28 @@ export default function WeekCalendar({
         })}
       </div>
 
-      <LessonTimeGrid
-        title="自分の授業"
-        kind="personal"
-        weekDates={weekDates}
-        todayKey={todayKey}
-        slotsByDay={personalSlotsByDay}
-        badgeClass="bg-brand-100 text-brand-700"
-        dragOverKey={dragOverKey}
-        setDragOverKey={setDragOverKey}
-        onDrop={handleLessonDrop}
-        taskLanesByDay={taskLanesByDay}
-        onLaneDrop={handleLaneDrop}
-        onToggleTask={(taskId, done) => startTransition(() => toggleTask(taskId, done))}
-        quickAdd={quickAdd}
-      />
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-[5]">
+          <LessonTimeGrid
+            title="自分の授業"
+            kind="personal"
+            weekDates={weekDates}
+            todayKey={todayKey}
+            slotsByDay={personalSlotsByDay}
+            badgeClass="bg-brand-100 text-brand-700"
+            dragOverKey={dragOverKey}
+            setDragOverKey={setDragOverKey}
+            onDrop={handleLessonDrop}
+            taskLanesByDay={taskLanesByDay}
+            onLaneDrop={handleLaneDrop}
+            onToggleTask={(taskId, done) => startTransition(() => toggleTask(taskId, done))}
+            quickAdd={quickAdd}
+          />
+        </div>
+        <div className="mt-3 min-w-[160px] flex-1">
+          <DashboardTaskList tasks={allTasks} />
+        </div>
+      </div>
       <LessonTimeGrid
         title="担任クラスの授業"
         kind="homeroom"

@@ -19,7 +19,7 @@ type Task = {
 
 export default function DashboardTaskList({ tasks }: { tasks: Task[] }) {
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-6 lg:col-span-2">
+    <section className="h-full rounded-xl border border-gray-200 bg-white p-4">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-700">タスクリスト</h2>
         <Link

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -35,6 +36,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -42,11 +44,58 @@ export default function Sidebar() {
     router.refresh();
   };
 
+  if (collapsed) {
+    return (
+      <aside className="flex h-screen w-14 shrink-0 flex-col items-center border-r border-gray-200 bg-white py-4">
+        <button
+          onClick={() => setCollapsed(false)}
+          title="サイドバーを表示"
+          className="mb-4 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50"
+        >
+          »
+        </button>
+        <nav className="flex-1 space-y-1">
+          {NAV_ITEMS.filter((item) => item.implemented).map((item, i) => {
+            const active = pathname?.startsWith(item.href);
+            return (
+              <Link
+                key={`${item.label}-${i}`}
+                href={item.href}
+                title={item.label}
+                className={`flex h-9 w-9 items-center justify-center rounded-md text-lg ${
+                  active ? "bg-brand-50" : "hover:bg-gray-50"
+                }`}
+              >
+                {item.icon}
+              </Link>
+            );
+          })}
+        </nav>
+        <button
+          onClick={handleLogout}
+          title="ログアウト"
+          className="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50"
+        >
+          🚪
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
-      <div className="flex items-center gap-2 px-5 py-6">
-        <span className="text-xl">📘</span>
-        <span className="text-lg font-bold text-brand-700">TeacherFlow</span>
+      <div className="flex items-center justify-between px-5 py-6">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">📘</span>
+          <span className="text-lg font-bold text-brand-700">TeacherFlow</span>
+        </div>
+        <button
+          onClick={() => setCollapsed(true)}
+          title="サイドバーを隠す"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-50"
+        >
+          «
+        </button>
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">

@@ -367,7 +367,7 @@ function LessonTimeGrid({
                   key={t.id}
                   draggable
                   onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                  className="flex cursor-grab items-center gap-1 truncate rounded bg-amber-50 px-1 py-0.5 text-[10px] text-amber-700 active:cursor-grabbing"
+                  className="flex cursor-grab items-center gap-1 truncate rounded bg-emerald-50 px-1 py-0.5 text-[10px] text-emerald-700 active:cursor-grabbing"
                 >
                   <input
                     type="checkbox"
@@ -406,7 +406,7 @@ function LessonTimeGrid({
   const allDayRow = () => (
     <tr className="border-b border-gray-100 bg-gray-50/40">
       <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
-        終日
+        予定
       </td>
       {weekDates.map((d, dayIndex) => {
         const cellKey = `allday-${dayIndex}`;

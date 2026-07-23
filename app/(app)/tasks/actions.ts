@@ -72,6 +72,39 @@ export async function scheduleTaskToTimeSlot(
   revalidatePath("/dashboard");
 }
 
+export async function quickAddTask({
+  title,
+  dueDate,
+  timeSlot,
+}: {
+  title: string;
+  dueDate: string;
+  timeSlot: TaskTimeSlot | null;
+}) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const trimmed = title.trim();
+  if (!trimmed) return;
+
+  const { error } = await supabase.from("tasks").insert({
+    user_id: user.id,
+    title: trimmed,
+    due_date: dueDate,
+    time_slot: timeSlot,
+    priority: 2,
+    status: "open",
+    source: "manual",
+  });
+  logSupabaseError("tasks.quickAddTask", error);
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteTask(taskId: string) {
   const supabase = createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);

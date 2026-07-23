@@ -7,6 +7,7 @@ import {
   updateTaskDueDate,
   scheduleTaskToTimeSlot,
   toggleTask,
+  quickAddTask,
   type TaskTimeSlot,
 } from "@/app/(app)/tasks/actions";
 import { updateInterviewDate } from "@/app/(app)/interviews/actions";
@@ -45,6 +46,15 @@ type EventChip = { id: string; title: string; category: string };
 type LessonProgressChip = { id: string; unit_name: string };
 type TaskLaneChip = { id: string; title: string; status: string };
 type TaskLanes = { morning: TaskLaneChip[]; noon: TaskLaneChip[]; afterschool: TaskLaneChip[] };
+
+type QuickAddState = {
+  key: string | null;
+  title: string;
+  open: (key: string) => void;
+  cancel: () => void;
+  setTitle: (title: string) => void;
+  submit: (dueDate: string, timeSlot: TaskTimeSlot | null) => void;
+};
 
 function formatDateParam(d: Date) {
   const y = d.getFullYear();
@@ -88,6 +98,29 @@ export default function WeekCalendar({
 
   const [, startTransition] = useTransition();
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+  const [addingKey, setAddingKey] = useState<string | null>(null);
+  const [addingTitle, setAddingTitle] = useState("");
+
+  const quickAdd: QuickAddState = {
+    key: addingKey,
+    title: addingTitle,
+    open: (key) => {
+      setAddingKey(key);
+      setAddingTitle("");
+    },
+    cancel: () => {
+      setAddingKey(null);
+      setAddingTitle("");
+    },
+    setTitle: setAddingTitle,
+    submit: (dueDate, timeSlot) => {
+      const title = addingTitle.trim();
+      setAddingKey(null);
+      setAddingTitle("");
+      if (!title) return;
+      startTransition(() => quickAddTask({ title, dueDate, timeSlot }));
+    },
+  };
 
   const handleAllDayDrop = (dayIndex: number, e: DragEvent) => {
     e.preventDefault();
@@ -282,6 +315,7 @@ export default function WeekCalendar({
         taskLanesByDay={taskLanesByDay}
         onLaneDrop={handleLaneDrop}
         onToggleTask={(taskId, done) => startTransition(() => toggleTask(taskId, done))}
+        quickAdd={quickAdd}
       />
       <LessonTimeGrid
         title="担任クラスの授業"
@@ -311,6 +345,7 @@ function LessonTimeGrid({
   taskLanesByDay,
   onLaneDrop,
   onToggleTask,
+  quickAdd,
 }: {
   title: string;
   kind: "personal" | "homeroom";
@@ -329,7 +364,29 @@ function LessonTimeGrid({
   taskLanesByDay?: Record<number, TaskLanes>;
   onLaneDrop?: (dayIndex: number, lane: TaskTimeSlot, e: DragEvent) => void;
   onToggleTask?: (taskId: string, done: boolean) => void;
+  quickAdd?: QuickAddState;
 }) {
+  const quickAddInput = (onSubmit: () => void) => (
+    <input
+      autoFocus
+      value={quickAdd?.title ?? ""}
+      onChange={(e) => quickAdd?.setTitle(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onSubmit();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          quickAdd?.cancel();
+        }
+      }}
+      onBlur={() => {
+        if (!quickAdd?.title.trim()) quickAdd?.cancel();
+      }}
+      placeholder="タスクを入力してEnter"
+      className="w-full rounded border border-brand-300 px-1 py-0.5 text-[10px] focus:outline-none"
+    />
+  );
   const laneRow = (lane: TaskTimeSlot) => (
     <tr key={`lane-${lane}`} className="border-b border-gray-50 bg-gray-50/60 last:border-0">
       <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
@@ -338,7 +395,10 @@ function LessonTimeGrid({
       {weekDates.map((d, dayIndex) => {
         const chips = taskLanesByDay?.[dayIndex]?.[lane] ?? [];
         const cellKey = `lane-${lane}-${dayIndex}`;
+        const addKey = `add-lane-${lane}-${dayIndex}`;
         const isDragOver = dragOverKey === cellKey;
+        const dateKey = formatDateParam(d);
+        const isAdding = quickAdd?.key === addKey;
         return (
           <td key={dayIndex} className="px-1 py-1 align-top">
             <div
@@ -350,8 +410,16 @@ function LessonTimeGrid({
                 isDragOver ? "ring-2 ring-orange-400" : ""
               }`}
             >
-              {chips.length === 0 ? (
-                <span className="text-[10px] text-gray-300">-</span>
+              {isAdding ? (
+                quickAddInput(() => quickAdd?.submit(dateKey, lane))
+              ) : chips.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => quickAdd?.open(addKey)}
+                  className="w-full text-left text-[10px] text-gray-300 hover:text-brand-500"
+                >
+                  + タスク
+                </button>
               ) : (
                 chips.map((t) => (
                   <div
@@ -425,8 +493,10 @@ function LessonTimeGrid({
                   {weekDates.map((d, dayIndex) => {
                     const entry = slotsByDay[dayIndex]?.[period] ?? null;
                     const cellKey = `${kind}-${dayIndex}-${period}`;
+                    const addKey = `add-period-${kind}-${dayIndex}-${period}`;
                     const isDragOver = dragOverKey === cellKey;
                     const dateKey = formatDateParam(d);
+                    const isAdding = quickAdd?.key === addKey;
                     return (
                       <td key={dayIndex} className="px-1 py-1">
                         <div
@@ -456,6 +526,16 @@ function LessonTimeGrid({
                             <p className="truncate font-medium" title={entry.name}>
                               {entry.name}
                             </p>
+                          ) : isAdding ? (
+                            quickAddInput(() => quickAdd?.submit(dateKey, null))
+                          ) : quickAdd ? (
+                            <button
+                              type="button"
+                              onClick={() => quickAdd.open(addKey)}
+                              className="w-full text-left text-[10px] text-gray-300 hover:text-brand-500"
+                            >
+                              + タスク
+                            </button>
                           ) : (
                             <span className="text-[10px] text-gray-300">-</span>
                           )}

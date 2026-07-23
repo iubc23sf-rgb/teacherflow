@@ -33,6 +33,18 @@ export async function createInterview(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function updateInterviewDate(interviewId: string, interviewDate: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("interview_records")
+    .update({ interview_date: interviewDate })
+    .eq("id", interviewId);
+  logSupabaseError("interviews.updateInterviewDate", error);
+
+  revalidatePath("/interviews");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteInterview(interviewId: string) {
   const supabase = createClient();
   const { error } = await supabase

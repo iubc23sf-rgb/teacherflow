@@ -31,6 +31,18 @@ export async function createSchoolEvent(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function updateEventDate(eventId: string, eventDate: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("school_events")
+    .update({ event_date: eventDate })
+    .eq("id", eventId);
+  logSupabaseError("events.updateEventDate", error);
+
+  revalidatePath("/events");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteSchoolEvent(eventId: string) {
   const supabase = createClient();
   const { error } = await supabase

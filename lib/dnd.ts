@@ -3,7 +3,16 @@ import type { DragEvent } from "react";
 export type DragPayload =
   | { source: "slot"; day: number; period: number }
   | { source: "subject"; subjectId: string }
-  | { source: "task"; taskId: string };
+  | { source: "task"; taskId: string }
+  | {
+      source: "weekLesson";
+      kind: "personal" | "homeroom";
+      date: string;
+      period: number;
+    }
+  | { source: "interview"; interviewId: string }
+  | { source: "event"; eventId: string }
+  | { source: "lessonProgress"; progressId: string };
 
 const MIME = "application/x-teacherflow-dnd";
 

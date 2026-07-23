@@ -48,6 +48,18 @@ export async function updateCompletedHours(progressId: string, completedHours: n
   revalidatePath("/dashboard");
 }
 
+export async function updateTargetTestDate(progressId: string, targetTestDate: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("lesson_progress")
+    .update({ target_test_date: targetTestDate, updated_at: new Date().toISOString() })
+    .eq("id", progressId);
+  logSupabaseError("lessonProgress.updateTargetTestDate", error);
+
+  revalidatePath("/lesson-progress");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteLessonProgress(progressId: string) {
   const supabase = createClient();
   const { error } = await supabase

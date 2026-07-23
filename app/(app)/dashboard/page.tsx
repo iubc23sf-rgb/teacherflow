@@ -62,48 +62,59 @@ function buildMonthGrid(monthDate: Date) {
   return weeks;
 }
 
+const PERIODS = [1, 2, 3, 4, 5, 6];
+
 function groupSlotsByDay(
   slots: any[],
   timetableId: string,
   overrides: any[],
   weekDates: Date[]
 ) {
-  const byDay: Record<number, { id: string; name: string }[]> = {};
+  const byDay: Record<number, Record<number, any | null>> = {};
 
   weekDates.forEach((date, dayOfWeek) => {
     const dateKey = formatDateParam(date);
-    const overridesForDate = overrides.filter(
-      (o) => o.timetable_id === timetableId && o.override_date === dateKey
-    );
     const overrideByPeriod = new Map<number, any>();
-    overridesForDate.forEach((o) => overrideByPeriod.set(o.period, o));
+    overrides
+      .filter((o) => o.timetable_id === timetableId && o.override_date === dateKey)
+      .forEach((o) => overrideByPeriod.set(o.period, o));
 
-    const recurring = slots
+    const recurringByPeriod = new Map<number, any>();
+    slots
       .filter((s) => s.timetable_id === timetableId && s.day_of_week === dayOfWeek)
-      .sort((a, b) => a.period - b.period);
+      .forEach((s) => recurringByPeriod.set(s.period, s));
 
-    const periods = new Set<number>([
-      ...recurring.map((s) => s.period),
-      ...overridesForDate.map((o) => o.period),
-    ]);
-
-    const entries: { id: string; period: number; name: string }[] = [];
-    Array.from(periods)
-      .sort((a, b) => a - b)
-      .forEach((period) => {
-        const override = overrideByPeriod.get(period);
-        if (override) {
-          const label = override.custom_label ?? override.subjects?.name ?? null;
-          if (label) entries.push({ id: `o-${override.id}`, period, name: label });
-          return; // override present with no subject/label → explicitly emptied
-        }
-        const slot = recurring.find((s) => s.period === period);
-        if (slot?.subjects?.name) {
-          entries.push({ id: slot.id, period, name: slot.subjects.name });
-        }
-      });
-
-    byDay[dayOfWeek] = entries.map(({ id, name }) => ({ id, name }));
+    const dayMap: Record<number, any | null> = {};
+    PERIODS.forEach((period) => {
+      const override = overrideByPeriod.get(period);
+      if (override) {
+        const name = override.custom_label ?? override.subjects?.name ?? null;
+        dayMap[period] = name
+          ? {
+              id: `o-${override.id}`,
+              subjectId: override.subject_id,
+              customLabel: override.custom_label,
+              name,
+              classId: override.class_id,
+              room: override.room,
+            }
+          : null;
+        return;
+      }
+      const slot = recurringByPeriod.get(period);
+      dayMap[period] =
+        slot && slot.subjects?.name
+          ? {
+              id: slot.id,
+              subjectId: slot.subject_id,
+              customLabel: null,
+              name: slot.subjects.name,
+              classId: slot.class_id,
+              room: slot.room,
+            }
+          : null;
+    });
+    byDay[dayOfWeek] = dayMap;
   });
 
   return byDay;
@@ -173,6 +184,10 @@ export default async function DashboardPage({
     { data: upcomingInterviews, error: upcomingInterviewsError },
     { data: allSlots, error: allSlotsError },
     { data: weekOverrides, error: weekOverridesError },
+    { data: weekTasks, error: weekTasksError },
+    { data: weekInterviews, error: weekInterviewsError },
+    { data: weekEvents, error: weekEventsError },
+    { data: weekLessonProgress, error: weekLessonProgressError },
     { data: monthTasks, error: monthTasksError },
     { data: monthInterviews, error: monthInterviewsError },
     { data: monthEvents, error: monthEventsError },
@@ -216,6 +231,32 @@ export default async function DashboardPage({
       .lte("override_date", formatDateParam(weekDates[4])),
     supabase
       .from("tasks")
+      .select("id, title, due_date, priority")
+      .eq("user_id", userId)
+      .not("due_date", "is", null)
+      .gte("due_date", formatDateParam(weekDates[0]))
+      .lte("due_date", formatDateParam(weekDates[4])),
+    supabase
+      .from("interview_records")
+      .select("id, student_name, interview_date")
+      .eq("user_id", userId)
+      .gte("interview_date", formatDateParam(weekDates[0]))
+      .lte("interview_date", formatDateParam(weekDates[4])),
+    supabase
+      .from("school_events")
+      .select("id, title, event_date, category")
+      .eq("user_id", userId)
+      .gte("event_date", formatDateParam(weekDates[0]))
+      .lte("event_date", formatDateParam(weekDates[4])),
+    supabase
+      .from("lesson_progress")
+      .select("id, unit_name, target_test_date")
+      .eq("user_id", userId)
+      .not("target_test_date", "is", null)
+      .gte("target_test_date", formatDateParam(weekDates[0]))
+      .lte("target_test_date", formatDateParam(weekDates[4])),
+    supabase
+      .from("tasks")
       .select("id, title, due_date")
       .eq("user_id", userId)
       .not("due_date", "is", null)
@@ -248,6 +289,10 @@ export default async function DashboardPage({
   logSupabaseError("dashboard.upcomingInterviews", upcomingInterviewsError);
   logSupabaseError("dashboard.allSlots", allSlotsError);
   logSupabaseError("dashboard.weekOverrides", weekOverridesError);
+  logSupabaseError("dashboard.weekTasks", weekTasksError);
+  logSupabaseError("dashboard.weekInterviews", weekInterviewsError);
+  logSupabaseError("dashboard.weekEvents", weekEventsError);
+  logSupabaseError("dashboard.weekLessonProgress", weekLessonProgressError);
   logSupabaseError("dashboard.monthTasks", monthTasksError);
   logSupabaseError("dashboard.monthInterviews", monthInterviewsError);
   logSupabaseError("dashboard.monthEvents", monthEventsError);
@@ -265,6 +310,22 @@ export default async function DashboardPage({
     weekOverrides ?? [],
     weekDates
   );
+
+  const weekTasksByDay: Record<number, any[]> = {};
+  const weekInterviewsByDay: Record<number, any[]> = {};
+  const weekEventsByDay: Record<number, any[]> = {};
+  const weekLessonProgressByDay: Record<number, any[]> = {};
+  weekDates.forEach((date, i) => {
+    const key = formatDateParam(date);
+    weekTasksByDay[i] = (weekTasks ?? []).filter((t: any) => t.due_date === key);
+    weekInterviewsByDay[i] = (weekInterviews ?? []).filter(
+      (iv: any) => iv.interview_date === key
+    );
+    weekEventsByDay[i] = (weekEvents ?? []).filter((e: any) => e.event_date === key);
+    weekLessonProgressByDay[i] = (weekLessonProgress ?? []).filter(
+      (lp: any) => lp.target_test_date === key
+    );
+  });
 
   const eventsByDate: Record<string, DateBadge[]> = {};
   (monthTasks ?? []).forEach((t: any) => {
@@ -314,20 +375,22 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6">
       {/* Row 1 */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-2">
-          <WeekCalendar
-            weekDates={weekDates}
-            personalSlotsByDay={personalSlotsByDay}
-            homeroomSlotsByDay={homeroomSlotsByDay}
-            todayKey={now.toDateString()}
-            prevHref={`/dashboard?week=${formatDateParam(prevWeekStart)}`}
-            nextHref={`/dashboard?week=${formatDateParam(nextWeekStart)}`}
-          />
-        </div>
+      <WeekCalendar
+        weekDates={weekDates}
+        todayKey={now.toDateString()}
+        prevHref={`/dashboard?week=${formatDateParam(prevWeekStart)}`}
+        nextHref={`/dashboard?week=${formatDateParam(nextWeekStart)}`}
+        personalTimetableId={personalTimetableId}
+        homeroomTimetableId={homeroomTimetableId}
+        personalSlotsByDay={personalSlotsByDay}
+        homeroomSlotsByDay={homeroomSlotsByDay}
+        tasksByDay={weekTasksByDay}
+        interviewsByDay={weekInterviewsByDay}
+        eventsByDay={weekEventsByDay}
+        lessonProgressByDay={weekLessonProgressByDay}
+      />
 
-        <DashboardTaskList tasks={(openTasks ?? []) as any} />
-      </div>
+      <DashboardTaskList tasks={(openTasks ?? []) as any} />
 
       <MonthCalendar
         weeks={monthWeeks}

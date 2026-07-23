@@ -373,6 +373,7 @@ function LessonTimeGrid({
       onChange={(e) => quickAdd?.setTitle(e.target.value)}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
+          if (e.nativeEvent.isComposing) return; // 日本語入力の変換確定のEnterは無視
           e.preventDefault();
           onSubmit();
         } else if (e.key === "Escape") {
@@ -410,9 +411,32 @@ function LessonTimeGrid({
                 isDragOver ? "ring-2 ring-orange-400" : ""
               }`}
             >
+              {chips.map((t) => (
+                <div
+                  key={t.id}
+                  draggable
+                  onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
+                  className="flex cursor-grab items-center gap-1 truncate rounded bg-amber-50 px-1 py-0.5 text-[10px] text-amber-700 active:cursor-grabbing"
+                >
+                  <input
+                    type="checkbox"
+                    checked={t.status === "done"}
+                    onChange={(e) => onToggleTask?.(t.id, e.target.checked)}
+                    className="h-3 w-3 shrink-0"
+                  />
+                  <span
+                    className={`truncate ${
+                      t.status === "done" ? "text-gray-400 line-through" : ""
+                    }`}
+                    title={t.title}
+                  >
+                    {t.title}
+                  </span>
+                </div>
+              ))}
               {isAdding ? (
                 quickAddInput(() => quickAdd?.submit(dateKey, lane))
-              ) : chips.length === 0 ? (
+              ) : (
                 <button
                   type="button"
                   onClick={() => quickAdd?.open(addKey)}
@@ -420,30 +444,6 @@ function LessonTimeGrid({
                 >
                   + タスク
                 </button>
-              ) : (
-                chips.map((t) => (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                    className="flex cursor-grab items-center gap-1 truncate rounded bg-amber-50 px-1 py-0.5 text-[10px] text-amber-700 active:cursor-grabbing"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={t.status === "done"}
-                      onChange={(e) => onToggleTask?.(t.id, e.target.checked)}
-                      className="h-3 w-3 shrink-0"
-                    />
-                    <span
-                      className={`truncate ${
-                        t.status === "done" ? "text-gray-400 line-through" : ""
-                      }`}
-                      title={t.title}
-                    >
-                      {t.title}
-                    </span>
-                  </div>
-                ))
               )}
             </div>
           </td>

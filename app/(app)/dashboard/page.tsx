@@ -231,7 +231,7 @@ export default async function DashboardPage({
       .lte("override_date", formatDateParam(weekDates[4])),
     supabase
       .from("tasks")
-      .select("id, title, due_date, priority")
+      .select("id, title, due_date, priority, status, time_slot")
       .eq("user_id", userId)
       .not("due_date", "is", null)
       .gte("due_date", formatDateParam(weekDates[0]))
@@ -315,9 +315,16 @@ export default async function DashboardPage({
   const weekInterviewsByDay: Record<number, any[]> = {};
   const weekEventsByDay: Record<number, any[]> = {};
   const weekLessonProgressByDay: Record<number, any[]> = {};
+  const taskLanesByDay: Record<number, { morning: any[]; noon: any[]; afterschool: any[] }> = {};
   weekDates.forEach((date, i) => {
     const key = formatDateParam(date);
-    weekTasksByDay[i] = (weekTasks ?? []).filter((t: any) => t.due_date === key);
+    const tasksThisDay = (weekTasks ?? []).filter((t: any) => t.due_date === key);
+    weekTasksByDay[i] = tasksThisDay.filter((t: any) => !t.time_slot);
+    taskLanesByDay[i] = {
+      morning: tasksThisDay.filter((t: any) => t.time_slot === "morning"),
+      noon: tasksThisDay.filter((t: any) => t.time_slot === "noon"),
+      afterschool: tasksThisDay.filter((t: any) => t.time_slot === "afterschool"),
+    };
     weekInterviewsByDay[i] = (weekInterviews ?? []).filter(
       (iv: any) => iv.interview_date === key
     );
@@ -388,6 +395,7 @@ export default async function DashboardPage({
         interviewsByDay={weekInterviewsByDay}
         eventsByDay={weekEventsByDay}
         lessonProgressByDay={weekLessonProgressByDay}
+        taskLanesByDay={taskLanesByDay}
       />
 
       <DashboardTaskList tasks={(openTasks ?? []) as any} />

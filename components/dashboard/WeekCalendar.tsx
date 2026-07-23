@@ -1,14 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, type DragEvent } from "react";
+import { Fragment, useState, useTransition, type DragEvent } from "react";
 import { getDragPayload, setDragPayload } from "@/lib/dnd";
-import { updateTaskDueDate } from "@/app/(app)/tasks/actions";
+import {
+  updateTaskDueDate,
+  scheduleTaskToTimeSlot,
+  toggleTask,
+  type TaskTimeSlot,
+} from "@/app/(app)/tasks/actions";
 import { updateInterviewDate } from "@/app/(app)/interviews/actions";
 import { updateEventDate } from "@/app/(app)/events/actions";
 import { updateTargetTestDate } from "@/app/(app)/lesson-progress/actions";
 import { saveOverride } from "@/app/(app)/timetable/actions";
 import { BELL_SCHEDULE } from "@/lib/bellSchedule";
+
+const TASK_LANE_LABEL: Record<TaskTimeSlot, string> = {
+  morning: "朝",
+  noon: "昼",
+  afterschool: "放課後",
+};
 
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
@@ -32,6 +43,8 @@ type TaskChip = { id: string; title: string; priority: number };
 type InterviewChip = { id: string; student_name: string };
 type EventChip = { id: string; title: string; category: string };
 type LessonProgressChip = { id: string; unit_name: string };
+type TaskLaneChip = { id: string; title: string; status: string };
+type TaskLanes = { morning: TaskLaneChip[]; noon: TaskLaneChip[]; afterschool: TaskLaneChip[] };
 
 function formatDateParam(d: Date) {
   const y = d.getFullYear();
@@ -53,6 +66,7 @@ export default function WeekCalendar({
   interviewsByDay,
   eventsByDay,
   lessonProgressByDay,
+  taskLanesByDay,
 }: {
   weekDates: Date[];
   todayKey: string;
@@ -66,6 +80,7 @@ export default function WeekCalendar({
   interviewsByDay: Record<number, InterviewChip[]>;
   eventsByDay: Record<number, EventChip[]>;
   lessonProgressByDay: Record<number, LessonProgressChip[]>;
+  taskLanesByDay: Record<number, TaskLanes>;
 }) {
   const weekLabel = `${weekDates[0].getFullYear()}年${
     weekDates[0].getMonth() + 1
@@ -133,6 +148,15 @@ export default function WeekCalendar({
         room: targetEntry?.room ?? null,
       });
     });
+  };
+
+  const handleLaneDrop = (dayIndex: number, lane: TaskTimeSlot, e: DragEvent) => {
+    e.preventDefault();
+    setDragOverKey(null);
+    const payload = getDragPayload(e);
+    if (!payload || payload.source !== "task") return;
+    const dateKey = formatDateParam(weekDates[dayIndex]);
+    startTransition(() => scheduleTaskToTimeSlot(payload.taskId, dateKey, lane));
   };
 
   return (
@@ -255,6 +279,9 @@ export default function WeekCalendar({
         dragOverKey={dragOverKey}
         setDragOverKey={setDragOverKey}
         onDrop={handleLessonDrop}
+        taskLanesByDay={taskLanesByDay}
+        onLaneDrop={handleLaneDrop}
+        onToggleTask={(taskId, done) => startTransition(() => toggleTask(taskId, done))}
       />
       <LessonTimeGrid
         title="担任クラスの授業"
@@ -281,6 +308,9 @@ function LessonTimeGrid({
   dragOverKey,
   setDragOverKey,
   onDrop,
+  taskLanesByDay,
+  onLaneDrop,
+  onToggleTask,
 }: {
   title: string;
   kind: "personal" | "homeroom";
@@ -296,7 +326,64 @@ function LessonTimeGrid({
     period: number,
     e: DragEvent
   ) => void;
+  taskLanesByDay?: Record<number, TaskLanes>;
+  onLaneDrop?: (dayIndex: number, lane: TaskTimeSlot, e: DragEvent) => void;
+  onToggleTask?: (taskId: string, done: boolean) => void;
 }) {
+  const laneRow = (lane: TaskTimeSlot) => (
+    <tr key={`lane-${lane}`} className="border-b border-gray-50 bg-gray-50/60 last:border-0">
+      <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
+        {TASK_LANE_LABEL[lane]}
+      </td>
+      {weekDates.map((d, dayIndex) => {
+        const chips = taskLanesByDay?.[dayIndex]?.[lane] ?? [];
+        const cellKey = `lane-${lane}-${dayIndex}`;
+        const isDragOver = dragOverKey === cellKey;
+        return (
+          <td key={dayIndex} className="px-1 py-1 align-top">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={() => setDragOverKey(cellKey)}
+              onDragLeave={() => setDragOverKey((k) => (k === cellKey ? null : k))}
+              onDrop={(e) => onLaneDrop?.(dayIndex, lane, e)}
+              className={`min-h-[28px] space-y-0.5 rounded border border-dashed border-gray-200 bg-white/70 px-1 py-1 transition ${
+                isDragOver ? "ring-2 ring-orange-400" : ""
+              }`}
+            >
+              {chips.length === 0 ? (
+                <span className="text-[10px] text-gray-300">-</span>
+              ) : (
+                chips.map((t) => (
+                  <div
+                    key={t.id}
+                    draggable
+                    onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
+                    className="flex cursor-grab items-center gap-1 truncate rounded bg-amber-50 px-1 py-0.5 text-[10px] text-amber-700 active:cursor-grabbing"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={t.status === "done"}
+                      onChange={(e) => onToggleTask?.(t.id, e.target.checked)}
+                      className="h-3 w-3 shrink-0"
+                    />
+                    <span
+                      className={`truncate ${
+                        t.status === "done" ? "text-gray-400 line-through" : ""
+                      }`}
+                      title={t.title}
+                    >
+                      {t.title}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="mt-3 rounded-lg border border-gray-100 p-3">
       <p className="mb-2 text-xs font-semibold text-gray-500">{title}</p>
@@ -323,59 +410,64 @@ function LessonTimeGrid({
             </tr>
           </thead>
           <tbody>
+            {taskLanesByDay && laneRow("morning")}
             {BELL_SCHEDULE.map(({ period, start, end }) => (
-              <tr key={period} className="border-b border-gray-50 last:border-0">
-                <td className="px-2 py-1 align-top text-[10px] leading-tight text-gray-400">
-                  <p className="font-medium text-gray-500">{period}限</p>
-                  <p>
-                    {start}
-                    <br />
-                    {end}
-                  </p>
-                </td>
-                {weekDates.map((d, dayIndex) => {
-                  const entry = slotsByDay[dayIndex]?.[period] ?? null;
-                  const cellKey = `${kind}-${dayIndex}-${period}`;
-                  const isDragOver = dragOverKey === cellKey;
-                  const dateKey = formatDateParam(d);
-                  return (
-                    <td key={dayIndex} className="px-1 py-1">
-                      <div
-                        draggable={!!entry}
-                        onDragStart={(e) => {
-                          if (!entry) return;
-                          setDragPayload(e, {
-                            source: "weekLesson",
-                            kind,
-                            date: dateKey,
-                            period,
-                          });
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDragEnter={() => setDragOverKey(cellKey)}
-                        onDragLeave={() =>
-                          setDragOverKey((k) => (k === cellKey ? null : k))
-                        }
-                        onDrop={(e) => onDrop(kind, dayIndex, period, e)}
-                        className={`min-h-[36px] rounded px-1 py-1 transition ${
-                          entry
-                            ? `cursor-grab active:cursor-grabbing ${badgeClass}`
-                            : "border border-dashed border-gray-200 bg-gray-50/50"
-                        } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
-                      >
-                        {entry ? (
-                          <p className="truncate font-medium" title={entry.name}>
-                            {entry.name}
-                          </p>
-                        ) : (
-                          <span className="text-[10px] text-gray-300">-</span>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
+              <Fragment key={period}>
+                <tr className="border-b border-gray-50 last:border-0">
+                  <td className="px-2 py-1 align-top text-[10px] leading-tight text-gray-400">
+                    <p className="font-medium text-gray-500">{period}限</p>
+                    <p>
+                      {start}
+                      <br />
+                      {end}
+                    </p>
+                  </td>
+                  {weekDates.map((d, dayIndex) => {
+                    const entry = slotsByDay[dayIndex]?.[period] ?? null;
+                    const cellKey = `${kind}-${dayIndex}-${period}`;
+                    const isDragOver = dragOverKey === cellKey;
+                    const dateKey = formatDateParam(d);
+                    return (
+                      <td key={dayIndex} className="px-1 py-1">
+                        <div
+                          draggable={!!entry}
+                          onDragStart={(e) => {
+                            if (!entry) return;
+                            setDragPayload(e, {
+                              source: "weekLesson",
+                              kind,
+                              date: dateKey,
+                              period,
+                            });
+                          }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDragEnter={() => setDragOverKey(cellKey)}
+                          onDragLeave={() =>
+                            setDragOverKey((k) => (k === cellKey ? null : k))
+                          }
+                          onDrop={(e) => onDrop(kind, dayIndex, period, e)}
+                          className={`min-h-[36px] rounded px-1 py-1 transition ${
+                            entry
+                              ? `cursor-grab active:cursor-grabbing ${badgeClass}`
+                              : "border border-dashed border-gray-200 bg-gray-50/50"
+                          } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
+                        >
+                          {entry ? (
+                            <p className="truncate font-medium" title={entry.name}>
+                              {entry.name}
+                            </p>
+                          ) : (
+                            <span className="text-[10px] text-gray-300">-</span>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+                {taskLanesByDay && period === 4 && laneRow("noon")}
+              </Fragment>
             ))}
+            {taskLanesByDay && laneRow("afterschool")}
           </tbody>
         </table>
       </div>

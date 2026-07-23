@@ -39,15 +39,34 @@ export async function toggleTask(taskId: string, done: boolean) {
   logSupabaseError("tasks.toggleTask", error);
 
   revalidatePath("/tasks");
+  revalidatePath("/dashboard");
 }
 
 export async function updateTaskDueDate(taskId: string, dueDate: string) {
   const supabase = createClient();
   const { error } = await supabase
     .from("tasks")
-    .update({ due_date: dueDate })
+    .update({ due_date: dueDate, time_slot: null })
     .eq("id", taskId);
   logSupabaseError("tasks.updateTaskDueDate", error);
+
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
+export type TaskTimeSlot = "morning" | "noon" | "afterschool";
+
+export async function scheduleTaskToTimeSlot(
+  taskId: string,
+  dueDate: string,
+  timeSlot: TaskTimeSlot
+) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ due_date: dueDate, time_slot: timeSlot })
+    .eq("id", taskId);
+  logSupabaseError("tasks.scheduleTaskToTimeSlot", error);
 
   revalidatePath("/tasks");
   revalidatePath("/dashboard");

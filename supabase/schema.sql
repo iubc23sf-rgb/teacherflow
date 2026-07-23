@@ -38,6 +38,7 @@ create table if not exists public.tasks (
   status text default 'open',
   source text default 'manual',
   google_event_id text,
+  time_slot text check (time_slot in ('morning', 'noon', 'afterschool')), -- 自分の時間割上の朝/昼/放課後レーン表示用
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

@@ -64,6 +64,10 @@ function formatDateParam(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+function formatMD(d: Date, weekdayLabel: string) {
+  return `${d.getMonth() + 1}/${d.getDate()}(${weekdayLabel})`;
+}
+
 export default function WeekCalendar({
   weekDates,
   todayKey,
@@ -103,6 +107,7 @@ export default function WeekCalendar({
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [addingTitle, setAddingTitle] = useState("");
+  const [showTaskPanel, setShowTaskPanel] = useState(true);
 
   const quickAdd: QuickAddState = {
     key: addingKey,
@@ -207,106 +212,25 @@ export default function WeekCalendar({
         <h2 className="text-sm font-semibold text-gray-700">
           今週の予定（{weekLabel}）
         </h2>
-        <Link
-          href={nextHref}
-          className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
-        >
-          翌週 →
-        </Link>
-      </div>
-
-      {/* 終日：タスク・面談・行事・テスト予定 */}
-      <div className="grid grid-cols-5 gap-1.5">
-        {weekDates.map((d, dayIndex) => {
-          const isToday = d.toDateString() === todayKey;
-          const cellKey = `allday-${dayIndex}`;
-          const isDragOver = dragOverKey === cellKey;
-          const tasks = tasksByDay[dayIndex] ?? [];
-          const interviews = interviewsByDay[dayIndex] ?? [];
-          const events = eventsByDay[dayIndex] ?? [];
-          const testDates = lessonProgressByDay[dayIndex] ?? [];
-
-          return (
-            <div
-              key={cellKey}
-              onDragOver={(e) => e.preventDefault()}
-              onDragEnter={() => setDragOverKey(cellKey)}
-              onDragLeave={() =>
-                setDragOverKey((k) => (k === cellKey ? null : k))
-              }
-              onDrop={(e) => handleAllDayDrop(dayIndex, e)}
-              className={`min-h-[64px] rounded-md border p-1.5 transition ${
-                isToday
-                  ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
-                  : "border-gray-100"
-              } ${isDragOver ? "ring-2 ring-orange-400" : ""}`}
-            >
-              <p
-                className={`mb-1 text-center text-[10px] ${
-                  isToday ? "font-semibold text-brand-700" : "text-gray-400"
-                }`}
-              >
-                {WEEKDAY_LABELS[dayIndex]} {d.getDate()}
-              </p>
-              <div className="space-y-1">
-                {tasks.map((t) => (
-                  <div
-                    key={`task-${t.id}`}
-                    draggable
-                    onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                    className="cursor-grab truncate rounded bg-amber-100 px-1.5 py-1 text-[10px] font-medium text-amber-700 active:cursor-grabbing"
-                    title={t.title}
-                  >
-                    {t.title}
-                  </div>
-                ))}
-                {interviews.map((iv) => (
-                  <div
-                    key={`iv-${iv.id}`}
-                    draggable
-                    onDragStart={(e) =>
-                      setDragPayload(e, { source: "interview", interviewId: iv.id })
-                    }
-                    className="cursor-grab truncate rounded bg-purple-100 px-1.5 py-1 text-[10px] font-medium text-purple-700 active:cursor-grabbing"
-                    title={`面談：${iv.student_name}`}
-                  >
-                    面談：{iv.student_name}
-                  </div>
-                ))}
-                {events.map((ev) => (
-                  <div
-                    key={`ev-${ev.id}`}
-                    draggable
-                    onDragStart={(e) => setDragPayload(e, { source: "event", eventId: ev.id })}
-                    className={`cursor-grab truncate rounded px-1.5 py-1 text-[10px] font-medium active:cursor-grabbing ${
-                      EVENT_CATEGORY_STYLE[ev.category] ?? EVENT_CATEGORY_STYLE.other
-                    }`}
-                    title={ev.title}
-                  >
-                    {ev.title}
-                  </div>
-                ))}
-                {testDates.map((lp) => (
-                  <div
-                    key={`lp-${lp.id}`}
-                    draggable
-                    onDragStart={(e) =>
-                      setDragPayload(e, { source: "lessonProgress", progressId: lp.id })
-                    }
-                    className="cursor-grab truncate rounded bg-blue-100 px-1.5 py-1 text-[10px] font-medium text-blue-700 active:cursor-grabbing"
-                    title={`テスト：${lp.unit_name}`}
-                  >
-                    テスト：{lp.unit_name}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowTaskPanel((v) => !v)}
+            className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
+          >
+            {showTaskPanel ? "タスク一覧を隠す" : "タスク一覧を表示"}
+          </button>
+          <Link
+            href={nextHref}
+            className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-50"
+          >
+            翌週 →
+          </Link>
+        </div>
       </div>
 
       <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-[5]">
+        <div className={`min-w-0 ${showTaskPanel ? "flex-[5]" : "flex-1"}`}>
           <LessonTimeGrid
             title="自分の授業"
             kind="personal"
@@ -321,11 +245,18 @@ export default function WeekCalendar({
             onLaneDrop={handleLaneDrop}
             onToggleTask={(taskId, done) => startTransition(() => toggleTask(taskId, done))}
             quickAdd={quickAdd}
+            tasksByDay={tasksByDay}
+            interviewsByDay={interviewsByDay}
+            eventsByDay={eventsByDay}
+            lessonProgressByDay={lessonProgressByDay}
+            onAllDayDrop={handleAllDayDrop}
           />
         </div>
-        <div className="mt-3 min-w-[160px] flex-1">
-          <DashboardTaskList tasks={allTasks} />
-        </div>
+        {showTaskPanel && (
+          <div className="mt-3 min-w-[160px] flex-1">
+            <DashboardTaskList tasks={allTasks} />
+          </div>
+        )}
       </div>
       <LessonTimeGrid
         title="担任クラスの授業"
@@ -356,6 +287,11 @@ function LessonTimeGrid({
   onLaneDrop,
   onToggleTask,
   quickAdd,
+  tasksByDay,
+  interviewsByDay,
+  eventsByDay,
+  lessonProgressByDay,
+  onAllDayDrop,
 }: {
   title: string;
   kind: "personal" | "homeroom";
@@ -375,6 +311,11 @@ function LessonTimeGrid({
   onLaneDrop?: (dayIndex: number, lane: TaskTimeSlot, e: DragEvent) => void;
   onToggleTask?: (taskId: string, done: boolean) => void;
   quickAdd?: QuickAddState;
+  tasksByDay?: Record<number, TaskChip[]>;
+  interviewsByDay?: Record<number, InterviewChip[]>;
+  eventsByDay?: Record<number, EventChip[]>;
+  lessonProgressByDay?: Record<number, LessonProgressChip[]>;
+  onAllDayDrop?: (dayIndex: number, e: DragEvent) => void;
 }) {
   const quickAddInput = (onSubmit: () => void) => (
     <input
@@ -462,6 +403,86 @@ function LessonTimeGrid({
     </tr>
   );
 
+  const allDayRow = () => (
+    <tr className="border-b border-gray-100 bg-gray-50/40">
+      <td className="px-2 py-1 align-top text-[10px] font-medium text-gray-500">
+        終日
+      </td>
+      {weekDates.map((d, dayIndex) => {
+        const cellKey = `allday-${dayIndex}`;
+        const isDragOver = dragOverKey === cellKey;
+        const tasks = tasksByDay?.[dayIndex] ?? [];
+        const interviews = interviewsByDay?.[dayIndex] ?? [];
+        const events = eventsByDay?.[dayIndex] ?? [];
+        const testDates = lessonProgressByDay?.[dayIndex] ?? [];
+        return (
+          <td key={dayIndex} className="px-1 py-1 align-top">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={() => setDragOverKey(cellKey)}
+              onDragLeave={() => setDragOverKey((k) => (k === cellKey ? null : k))}
+              onDrop={(e) => onAllDayDrop?.(dayIndex, e)}
+              className={`min-h-[28px] space-y-0.5 rounded px-1 py-1 transition ${
+                isDragOver ? "ring-2 ring-orange-400" : ""
+              }`}
+            >
+              {tasks.map((t) => (
+                <div
+                  key={`task-${t.id}`}
+                  draggable
+                  onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
+                  className="cursor-grab truncate rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 active:cursor-grabbing"
+                  title={t.title}
+                >
+                  {t.title}
+                </div>
+              ))}
+              {interviews.map((iv) => (
+                <div
+                  key={`iv-${iv.id}`}
+                  draggable
+                  onDragStart={(e) =>
+                    setDragPayload(e, { source: "interview", interviewId: iv.id })
+                  }
+                  className="cursor-grab truncate rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 active:cursor-grabbing"
+                  title={`面談：${iv.student_name}`}
+                >
+                  面談：{iv.student_name}
+                </div>
+              ))}
+              {events.map((ev) => (
+                <div
+                  key={`ev-${ev.id}`}
+                  draggable
+                  onDragStart={(e) => setDragPayload(e, { source: "event", eventId: ev.id })}
+                  className={`cursor-grab truncate rounded px-1.5 py-0.5 text-[10px] font-medium active:cursor-grabbing ${
+                    EVENT_CATEGORY_STYLE[ev.category] ?? EVENT_CATEGORY_STYLE.other
+                  }`}
+                  title={ev.title}
+                >
+                  {ev.title}
+                </div>
+              ))}
+              {testDates.map((lp) => (
+                <div
+                  key={`lp-${lp.id}`}
+                  draggable
+                  onDragStart={(e) =>
+                    setDragPayload(e, { source: "lessonProgress", progressId: lp.id })
+                  }
+                  className="cursor-grab truncate rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 active:cursor-grabbing"
+                  title={`テスト：${lp.unit_name}`}
+                >
+                  テスト：{lp.unit_name}
+                </div>
+              ))}
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="mt-3 rounded-lg border border-gray-100 p-3">
       <p className="mb-2 text-xs font-semibold text-gray-500">{title}</p>
@@ -481,13 +502,14 @@ function LessonTimeGrid({
                       isToday ? "text-brand-700" : "text-gray-500"
                     }`}
                   >
-                    {WEEKDAY_LABELS[i]} {d.getDate()}
+                    {formatMD(d, WEEKDAY_LABELS[i])}
                   </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
+            {onAllDayDrop && allDayRow()}
             {taskLanesByDay && laneRow("morning")}
             {BELL_SCHEDULE.map(({ period, start, end }) => (
               <Fragment key={period}>

@@ -26,10 +26,10 @@ const TASK_LANE_LABEL: Record<TaskTimeSlot, string> = {
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
 const EVENT_CATEGORY_STYLE: Record<string, string> = {
-  club: "bg-orange-100 text-orange-700",
-  duty: "bg-slate-200 text-slate-700",
-  event: "bg-green-100 text-green-700",
-  other: "bg-gray-200 text-gray-600",
+  club: "bg-orange-500 text-white",
+  duty: "bg-slate-500 text-white",
+  event: "bg-green-600 text-white",
+  other: "bg-gray-500 text-white",
 };
 
 type LessonEntry = {
@@ -237,7 +237,7 @@ export default function WeekCalendar({
             weekDates={weekDates}
             todayKey={todayKey}
             slotsByDay={personalSlotsByDay}
-            badgeClass="bg-brand-100 text-brand-700"
+            badgeClass="bg-brand-600 text-white shadow-sm"
             dragOverKey={dragOverKey}
             setDragOverKey={setDragOverKey}
             onDrop={handleLessonDrop}
@@ -264,7 +264,7 @@ export default function WeekCalendar({
         weekDates={weekDates}
         todayKey={todayKey}
         slotsByDay={homeroomSlotsByDay}
-        badgeClass="bg-purple-100 text-purple-700"
+        badgeClass="bg-purple-600 text-white shadow-sm"
         dragOverKey={dragOverKey}
         setDragOverKey={setDragOverKey}
         onDrop={handleLessonDrop}
@@ -317,27 +317,50 @@ function LessonTimeGrid({
   lessonProgressByDay?: Record<number, LessonProgressChip[]>;
   onAllDayDrop?: (dayIndex: number, e: DragEvent) => void;
 }) {
-  const quickAddInput = (onSubmit: () => void) => (
-    <input
-      autoFocus
-      value={quickAdd?.title ?? ""}
-      onChange={(e) => quickAdd?.setTitle(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          if (e.nativeEvent.isComposing) return; // 日本語入力の変換確定のEnterは無視
-          e.preventDefault();
-          onSubmit();
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          quickAdd?.cancel();
-        }
-      }}
-      onBlur={() => {
-        if (!quickAdd?.title.trim()) quickAdd?.cancel();
-      }}
-      placeholder="タスクを入力してEnter"
-      className="w-full rounded border border-brand-300 px-1 py-0.5 text-[10px] focus:outline-none"
-    />
+  const quickAddPopover = (onSubmit: () => void) => (
+    <div
+      onDragOver={(e) => e.stopPropagation()}
+      className="absolute left-0 top-full z-20 mt-1 w-52 rounded-lg border border-gray-200 bg-white p-2 text-left shadow-lg"
+    >
+      <input
+        autoFocus
+        value={quickAdd?.title ?? ""}
+        onChange={(e) => quickAdd?.setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            if (e.nativeEvent.isComposing) return; // 日本語入力の変換確定のEnterは無視
+            e.preventDefault();
+            onSubmit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            quickAdd?.cancel();
+          }
+        }}
+        onBlur={() => {
+          if (!quickAdd?.title.trim()) quickAdd?.cancel();
+        }}
+        placeholder="タスク名を入力"
+        className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
+      />
+      <div className="mt-1.5 flex justify-end gap-1">
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => quickAdd?.cancel()}
+          className="rounded px-2 py-1 text-[11px] text-gray-400 hover:bg-gray-50"
+        >
+          キャンセル
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onSubmit}
+          className="rounded bg-brand-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-brand-700"
+        >
+          追加
+        </button>
+      </div>
+    </div>
   );
   const laneRow = (lane: TaskTimeSlot) => (
     <tr key={`lane-${lane}`} className="border-b border-gray-50 bg-gray-50/60 last:border-0">
@@ -358,7 +381,7 @@ function LessonTimeGrid({
               onDragEnter={() => setDragOverKey(cellKey)}
               onDragLeave={() => setDragOverKey((k) => (k === cellKey ? null : k))}
               onDrop={(e) => onLaneDrop?.(dayIndex, lane, e)}
-              className={`min-h-[28px] space-y-0.5 rounded border border-dashed border-gray-200 bg-white/70 px-1 py-1 transition ${
+              className={`relative min-h-[28px] space-y-0.5 rounded border border-dashed border-gray-200 bg-white/70 px-1 py-1 transition ${
                 isDragOver ? "ring-2 ring-orange-400" : ""
               }`}
             >
@@ -367,7 +390,7 @@ function LessonTimeGrid({
                   key={t.id}
                   draggable
                   onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                  className="flex cursor-grab items-center gap-1 truncate rounded bg-emerald-50 px-1 py-0.5 text-[10px] text-emerald-700 active:cursor-grabbing"
+                  className="flex cursor-grab items-center gap-1 truncate rounded bg-emerald-500 px-1 py-0.5 text-[10px] text-white shadow-sm active:cursor-grabbing"
                 >
                   <input
                     type="checkbox"
@@ -377,7 +400,7 @@ function LessonTimeGrid({
                   />
                   <span
                     className={`truncate ${
-                      t.status === "done" ? "text-gray-400 line-through" : ""
+                      t.status === "done" ? "text-emerald-100 line-through" : ""
                     }`}
                     title={t.title}
                   >
@@ -386,7 +409,7 @@ function LessonTimeGrid({
                 </div>
               ))}
               {isAdding ? (
-                quickAddInput(() => quickAdd?.submit(dateKey, lane))
+                quickAddPopover(() => quickAdd?.submit(dateKey, lane))
               ) : (
                 <button
                   type="button"
@@ -431,7 +454,7 @@ function LessonTimeGrid({
                   key={`task-${t.id}`}
                   draggable
                   onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                  className="cursor-grab truncate rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
                   title={t.title}
                 >
                   {t.title}
@@ -444,7 +467,7 @@ function LessonTimeGrid({
                   onDragStart={(e) =>
                     setDragPayload(e, { source: "interview", interviewId: iv.id })
                   }
-                  className="cursor-grab truncate rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-purple-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
                   title={`面談：${iv.student_name}`}
                 >
                   面談：{iv.student_name}
@@ -470,7 +493,7 @@ function LessonTimeGrid({
                   onDragStart={(e) =>
                     setDragPayload(e, { source: "lessonProgress", progressId: lp.id })
                   }
-                  className="cursor-grab truncate rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
                   title={`テスト：${lp.unit_name}`}
                 >
                   テスト：{lp.unit_name}
@@ -548,7 +571,7 @@ function LessonTimeGrid({
                             setDragOverKey((k) => (k === cellKey ? null : k))
                           }
                           onDrop={(e) => onDrop(kind, dayIndex, period, e)}
-                          className={`min-h-[36px] rounded px-1 py-1 transition ${
+                          className={`relative min-h-[36px] rounded px-1 py-1 transition ${
                             entry
                               ? `cursor-grab active:cursor-grabbing ${badgeClass}`
                               : "border border-dashed border-gray-200 bg-gray-50/50"
@@ -559,7 +582,7 @@ function LessonTimeGrid({
                               {entry.name}
                             </p>
                           ) : isAdding ? (
-                            quickAddInput(() => quickAdd?.submit(dateKey, null))
+                            quickAddPopover(() => quickAdd?.submit(dateKey, null))
                           ) : quickAdd ? (
                             <button
                               type="button"

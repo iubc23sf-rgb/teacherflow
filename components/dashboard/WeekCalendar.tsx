@@ -26,10 +26,10 @@ const TASK_LANE_LABEL: Record<TaskTimeSlot, string> = {
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金"];
 
 const EVENT_CATEGORY_STYLE: Record<string, string> = {
-  club: "bg-orange-500 text-white",
-  duty: "bg-slate-500 text-white",
-  event: "bg-green-600 text-white",
-  other: "bg-gray-500 text-white",
+  club: "bg-orange-100 text-orange-700",
+  duty: "bg-slate-200 text-slate-700",
+  event: "bg-green-100 text-green-700",
+  other: "bg-gray-200 text-gray-600",
 };
 
 type LessonEntry = {
@@ -237,7 +237,7 @@ export default function WeekCalendar({
             weekDates={weekDates}
             todayKey={todayKey}
             slotsByDay={personalSlotsByDay}
-            badgeClass="bg-brand-600 text-white shadow-sm"
+            badgeClass="bg-brand-100 text-brand-700"
             dragOverKey={dragOverKey}
             setDragOverKey={setDragOverKey}
             onDrop={handleLessonDrop}
@@ -264,7 +264,7 @@ export default function WeekCalendar({
         weekDates={weekDates}
         todayKey={todayKey}
         slotsByDay={homeroomSlotsByDay}
-        badgeClass="bg-purple-600 text-white shadow-sm"
+        badgeClass="bg-purple-100 text-purple-700"
         dragOverKey={dragOverKey}
         setDragOverKey={setDragOverKey}
         onDrop={handleLessonDrop}
@@ -390,7 +390,7 @@ function LessonTimeGrid({
                   key={t.id}
                   draggable
                   onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                  className="flex cursor-grab items-center gap-1 truncate rounded bg-emerald-500 px-1 py-0.5 text-[10px] text-white shadow-sm active:cursor-grabbing"
+                  className="flex cursor-grab items-center gap-1 truncate rounded bg-emerald-50 px-1 py-0.5 text-[10px] text-emerald-700 active:cursor-grabbing"
                 >
                   <input
                     type="checkbox"
@@ -400,7 +400,7 @@ function LessonTimeGrid({
                   />
                   <span
                     className={`truncate ${
-                      t.status === "done" ? "text-emerald-100 line-through" : ""
+                      t.status === "done" ? "text-gray-400 line-through" : ""
                     }`}
                     title={t.title}
                   >
@@ -433,7 +433,10 @@ function LessonTimeGrid({
       </td>
       {weekDates.map((d, dayIndex) => {
         const cellKey = `allday-${dayIndex}`;
+        const addKey = `add-allday-${dayIndex}`;
         const isDragOver = dragOverKey === cellKey;
+        const isAdding = quickAdd?.key === addKey;
+        const dateKey = formatDateParam(d);
         const tasks = tasksByDay?.[dayIndex] ?? [];
         const interviews = interviewsByDay?.[dayIndex] ?? [];
         const events = eventsByDay?.[dayIndex] ?? [];
@@ -445,7 +448,12 @@ function LessonTimeGrid({
               onDragEnter={() => setDragOverKey(cellKey)}
               onDragLeave={() => setDragOverKey((k) => (k === cellKey ? null : k))}
               onDrop={(e) => onAllDayDrop?.(dayIndex, e)}
-              className={`min-h-[28px] space-y-0.5 rounded px-1 py-1 transition ${
+              onClick={(e) => {
+                if (!quickAdd || isAdding) return;
+                if (e.target !== e.currentTarget) return;
+                quickAdd.open(addKey);
+              }}
+              className={`relative min-h-[28px] cursor-pointer space-y-0.5 rounded px-1 py-1 transition hover:bg-gray-100/70 ${
                 isDragOver ? "ring-2 ring-orange-400" : ""
               }`}
             >
@@ -454,7 +462,7 @@ function LessonTimeGrid({
                   key={`task-${t.id}`}
                   draggable
                   onDragStart={(e) => setDragPayload(e, { source: "task", taskId: t.id })}
-                  className="cursor-grab truncate rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 active:cursor-grabbing"
                   title={t.title}
                 >
                   {t.title}
@@ -467,7 +475,7 @@ function LessonTimeGrid({
                   onDragStart={(e) =>
                     setDragPayload(e, { source: "interview", interviewId: iv.id })
                   }
-                  className="cursor-grab truncate rounded bg-purple-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 active:cursor-grabbing"
                   title={`面談：${iv.student_name}`}
                 >
                   面談：{iv.student_name}
@@ -493,12 +501,13 @@ function LessonTimeGrid({
                   onDragStart={(e) =>
                     setDragPayload(e, { source: "lessonProgress", progressId: lp.id })
                   }
-                  className="cursor-grab truncate rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm active:cursor-grabbing"
+                  className="cursor-grab truncate rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 active:cursor-grabbing"
                   title={`テスト：${lp.unit_name}`}
                 >
                   テスト：{lp.unit_name}
                 </div>
               ))}
+              {isAdding && quickAddPopover(() => quickAdd?.submit(dateKey, null))}
             </div>
           </td>
         );
